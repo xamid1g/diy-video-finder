@@ -1,0 +1,112 @@
+# DIY Video Finder - Automated Video Curation Workflow
+# Runs the multi-agent pipeline to find and curate new Trockenbau videos
+
+name: 🎬 Video Curation
+
+on:
+  # Scheduled: Every Monday at 6:00 UTC (7:00 CET / 8:00 CEST)
+  schedule:
+    - cron: '0 6 * * 1'
+  
+  # Manual trigger with options
+  workflow_dispatch:
+    inputs:
+      skip_design:
+        description: 'Skip CSS design task (faster)'
+        required: false
+        default: false
+        type: boolean
+      max_videos:
+        description: 'Maximum videos to process'
+        required: false
+        default: '10'
+        type: string
+
+jobs:
+  curate:
+    name: 🤖 Run Agent Pipeline
+    runs-on: ubuntu-latest
+    timeout-minutes: 30  # Pipeline usually takes 5-10 min
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: 🐍 Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: 📦 Install uv
+        uses: astral-sh/setup-uv@v4
+      
+      - name: 🎬 Run Video Curation Pipeline
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        run: |
+          # Build command with optional flags
+          CMD="uv run --no-project -p 3.11 --with crewai --with crewai-tools --with python-dotenv --with pydantic --with litellm --with google-api-python-client video_curator.py"
+          
+          # Add skip-design flag if requested
+          if [ "${{ inputs.skip_design }}" = "true" ]; then
+            CMD="$CMD --skip-design"
+          fi
+          
+          # Add max-videos if specified
+          if [ -n "${{ inputs.max_videos }}" ]; then
+            CMD="$CMD --max-videos ${{ inputs.max_videos }}"
+          fi
+          
+          echo "🚀 Running: $CMD"
+          $CMD
+      
+      - name: 📊 Show changes
+        run: |
+          echo "📄 Changes in output/script.js:"
+          git diff --stat output/script.js || echo "No changes"
+          echo ""
+          echo "🎨 Changes in output/styles.css:"
+          git diff --stat output/styles.css || echo "No changes"
+      
+      - name: 💾 Commit and push changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "🤖 Auto-curated videos [skip ci]"
+          file_pattern: "output/*.js output/*.css"
+          commit_user_name: "GitHub Actions Bot"
+          commit_user_email: "actions@github.com"
+          commit_author: "GitHub Actions <actions@github.com>"
+
+  # Optional: Deploy to GitHub Pages
+  deploy:
+    name: 🚀 Deploy to GitHub Pages
+    needs: curate
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+    
+    permissions:
+      pages: write
+      id-token: write
+    
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: master  # Get latest with auto-commit
+      
+      - name: 📦 Setup Pages
+        uses: actions/configure-pages@v4
+      
+      - name: 📤 Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'output'
+      
+      - name: 🌐 Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
