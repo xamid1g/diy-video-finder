@@ -1074,17 +1074,26 @@ def run_video_curation():
 
         except Exception as e:
             error_str = str(e).lower()
-            # Check for rate limit errors (429)
-            if "429" in str(e) or "resource_exhausted" in error_str or "rate" in error_str:
+            # Check for retryable errors: rate limits (429), empty responses, timeouts
+            is_retryable = (
+                "429" in str(e)
+                or "resource_exhausted" in error_str
+                or "rate" in error_str
+                or "none or empty" in error_str
+                or "invalid response" in error_str
+                or "timeout" in error_str
+            )
+
+            if is_retryable:
                 delay = base_delay * (2**attempt)  # Exponential backoff: 30s, 60s, 120s
-                print(f"\n⚠️  Rate limit hit (attempt {attempt + 1}/{max_retries})")
+                print(f"\n⚠️  Retryable error (attempt {attempt + 1}/{max_retries}): {str(e)[:100]}")
                 print(f"⏳ Waiting {delay} seconds before retry...")
                 time.sleep(delay)
                 if attempt == max_retries - 1:
                     print("❌ Max retries reached. Please wait a few minutes and try again.")
                     raise
             else:
-                # Non-rate-limit error - don't retry
+                # Non-retryable error - don't retry
                 raise
 
     print("\n" + "=" * 70)
