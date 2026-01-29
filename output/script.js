@@ -1,12 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // KURATIERTE Videos vom Multi-Agent System (29. Januar 2026)
+    // KURATIERTE Videos vom Multi-Agent System
     // Geprüft durch: YouTube Researcher → Trockenbaumeister → Content Curator → Frontend Developer
     const videos = [
-  {title:{de:"Video e9ghcbP200g",en:"Video e9ghcbP200g"},description:{de:"",en:""},rating:4.0,views:"0",category:"grundlagen",youtubeId:"e9ghcbP200g",channel:"Unknown"},
-  {title:{de:"Video mwEnTFm80-M",en:"Video mwEnTFm80-M"},description:{de:"",en:""},rating:4.0,views:"0",category:"grundlagen",youtubeId:"mwEnTFm80-M",channel:"Unknown"},
-  {title:{de:"Video i7jZ9suB9y8",en:"Video i7jZ9suB9y8"},description:{de:"",en:""},rating:4.0,views:"0",category:"grundlagen",youtubeId:"i7jZ9suB9y8",channel:"Unknown"},
-  {title:{de:"Video obvKgvIv_Vg",en:"Video obvKgvIv_Vg"},description:{de:"",en:""},rating:4.0,views:"0",category:"grundlagen",youtubeId:"obvKgvIv_Vg",channel:"Unknown"},
-  {title:{de:"Video uoU_BlY_2Lw",en:"Video uoU_BlY_2Lw"},description:{de:"",en:""},rating:4.0,views:"0",category:"grundlagen",youtubeId:"uoU_BlY_2Lw",channel:"Unknown"},
+  // Videos werden von der Pipeline eingefügt
 ];
 
     // Kategorien mit deutschen und englischen Namen
