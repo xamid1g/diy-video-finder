@@ -80,12 +80,13 @@ args = parse_args()
 # =============================================================================
 GH_MODELS_TOKEN = os.getenv("GH_MODELS_TOKEN")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
-# Read OPENAI_API_KEY BEFORE any overwrites
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+# API Keys for LLM providers (priority: Gemini > OpenAI > GitHub Models)
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")  # Gemini - 1M tokens, free tier
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")  # OpenAI - 128K tokens
 DRY_RUN = args.dry_run
 
-if not GH_MODELS_TOKEN and not OPENAI_API_KEY:
-    raise ValueError("Either OPENAI_API_KEY or GH_MODELS_TOKEN must be set in .env")
+if not GH_MODELS_TOKEN and not OPENAI_API_KEY and not GOOGLE_API_KEY:
+    raise ValueError("Set at least one LLM API key in .env: GOOGLE_API_KEY, OPENAI_API_KEY, or GH_MODELS_TOKEN")
 
 if not YOUTUBE_API_KEY:
     print("⚠️  WARNING: YOUTUBE_API_KEY not set - YouTube search will not work!")
@@ -203,28 +204,37 @@ MOCK_VIDEO_DETAILS = {
 # =============================================================================
 # LLM CONFIGURATION
 # =============================================================================
+# Priority: Gemini (1M tokens, free) > OpenAI (128K) > GitHub Models (8K)
 if not DRY_RUN:
-    if OPENAI_API_KEY:
-        print("🤖 Initializing Multi-Agent System (GPT-4o via OpenAI)...")
+    if GOOGLE_API_KEY:
+        print("🤖 Initializing Multi-Agent System (Gemini 2.0 Flash - 1M+ tokens)...")
+    elif OPENAI_API_KEY:
+        print("🤖 Initializing Multi-Agent System (GPT-4o via OpenAI - 128K tokens)...")
     else:
-        print("🤖 Initializing Multi-Agent System (GPT-4o-mini via GitHub Models)...")
+        print("🤖 Initializing Multi-Agent System (GPT-4o-mini via GitHub Models - 8K tokens)...")
 else:
     print("🧪 DRY-RUN MODE - Using mock data, no API calls")
 
-# LLM Configuration
-if not OPENAI_API_KEY and not DRY_RUN:
-    print("⚠️  OPENAI_API_KEY not found, falling back to GitHub Models")
-    # Fallback to GitHub Models if no OpenAI key
+# LLM Configuration with fallback chain
+if GOOGLE_API_KEY:
+    # Gemini 2.0 Flash - latest model, 1M+ tokens context, free tier available
+    gpt4o_llm = LLM(
+        model="gemini/gemini-2.0-flash",
+        api_key=GOOGLE_API_KEY,
+    )
+elif OPENAI_API_KEY:
+    # OpenAI GPT-4o - 128K context
+    gpt4o_llm = LLM(
+        model="gpt-4o",
+        api_key=OPENAI_API_KEY,
+    )
+else:
+    # Fallback to GitHub Models (8K context limit)
+    print("⚠️  Using GitHub Models fallback (limited to 8K tokens)")
     gpt4o_llm = LLM(
         model="openai/gpt-4o-mini",
         api_key=GH_MODELS_TOKEN,
         base_url=GITHUB_API_BASE,
-    )
-else:
-    # Use OpenAI directly - 128K context, full intelligence
-    gpt4o_llm = LLM(
-        model="gpt-4o",
-        api_key=OPENAI_API_KEY,
     )
 
 
