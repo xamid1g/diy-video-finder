@@ -188,7 +188,7 @@ class YouTubeSearchTool(BaseTool):
     """Search YouTube for real drywall tutorial videos"""
     
     name: str = "YouTube Video Search"
-    description: str = """Search YouTube for Trockenbau videos. Input: search query. Returns: JSON with top 5 videos."""
+    description: str = """Search YouTube for Trockenbau videos. Input: search query. Returns: JSON with videos (up to 15 results)."""
     
     def _run(self, query: str) -> str:
         # DRY-RUN: Return mock data
@@ -206,9 +206,10 @@ class YouTubeSearchTool(BaseTool):
                 q=query,
                 part='id,snippet',
                 type='video',
-                maxResults=5,  # Reduced from 10
-                order='viewCount',  # Sort by views
+                maxResults=15,  # More results to find new videos
+                order='relevance',  # Better for finding quality tutorials
                 relevanceLanguage='de',
+                videoDuration='medium',  # Filter out very short clips
             ).execute()
             
             videos = []
@@ -667,18 +668,29 @@ senior_designer_agent = Agent(
 # TASK DEFINITIONS
 # =============================================================================
 
-# Task 1: Load existing data and research new videos
+# Task 1: Load existing data and research NEW videos
 research_task = Task(
-    description="""Search YouTube for Trockenbau videos.
+    description="""Search YouTube for NEW Trockenbau videos that are NOT already on the website.
     
-    1. Load existing videos with "Load Existing Videos" tool
-    2. Search these queries with "YouTube Video Search" tool:
-       - "Trockenbau Anleitung"
-       - "Rigips Decke"
-       - "Trockenbau reparieren"
-    3. Return JSON array with top 10 videos (id, title, channel, views)""",
+    STEP 1: Load existing video IDs
+    - Use "Load Existing Videos" tool FIRST
+    - Note all existing youtubeId values - these MUST be skipped!
+    
+    STEP 2: Search for NEW videos with "YouTube Video Search" tool:
+       - "Trockenbau Anleitung Profi"
+       - "Rigips Decke montieren"
+       - "Trockenbau Wand bauen"
+       - "Gipskarton spachteln"
+       - "Dachausbau Trockenbau"
+    
+    STEP 3: Filter results
+    - SKIP any video ID that already exists on the website!
+    - Only include truly NEW videos
+    
+    Return: JSON array with ONLY NEW videos (id, title, channel, views)
+    If a video ID is in the existing list, DO NOT include it!""",
     agent=video_research_agent,
-    expected_output="JSON array of 10 videos with id, title, channel, views"
+    expected_output="JSON array of NEW videos (not already on website) with id, title, channel, views"
 )
 
 # Task 2: Quality review by Trockenbaumeister
