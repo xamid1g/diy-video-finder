@@ -1040,7 +1040,9 @@ crew_no_design = Crew(
 
 
 def run_video_curation():
-    """Run the video curation pipeline"""
+    """Run the video curation pipeline with retry logic for rate limits"""
+    import time
+
     print("\n" + "=" * 70)
     print("🎬 DIY VIDEO FINDER - Multi-Agent Video Curation System")
     print("=" * 70)
@@ -1059,8 +1061,31 @@ def run_video_curation():
     # Select crew based on --skip-design flag
     active_crew = crew_no_design if args.skip_design else crew
 
-    # Run the crew
-    result = active_crew.kickoff()
+    # Retry configuration for rate limits
+    max_retries = 3
+    base_delay = 30  # Start with 30 seconds
+    result = None
+
+    for attempt in range(max_retries):
+        try:
+            # Run the crew
+            result = active_crew.kickoff()
+            break  # Success - exit retry loop
+
+        except Exception as e:
+            error_str = str(e).lower()
+            # Check for rate limit errors (429)
+            if "429" in str(e) or "resource_exhausted" in error_str or "rate" in error_str:
+                delay = base_delay * (2**attempt)  # Exponential backoff: 30s, 60s, 120s
+                print(f"\n⚠️  Rate limit hit (attempt {attempt + 1}/{max_retries})")
+                print(f"⏳ Waiting {delay} seconds before retry...")
+                time.sleep(delay)
+                if attempt == max_retries - 1:
+                    print("❌ Max retries reached. Please wait a few minutes and try again.")
+                    raise
+            else:
+                # Non-rate-limit error - don't retry
+                raise
 
     print("\n" + "=" * 70)
     print("✅ VIDEO CURATION COMPLETE")
