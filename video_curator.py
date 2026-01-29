@@ -290,9 +290,9 @@ class YouTubeSearchTool(BaseTool):
                         if video["id"] == vid_id:
                             views = int(stats_item.get("statistics", {}).get("viewCount", 0))
                             if views >= 1000000:
-                                video["views"] = f"{views//1000000}M"
+                                video["views"] = f"{views // 1000000}M"
                             elif views >= 1000:
-                                video["views"] = f"{views//1000}K"
+                                video["views"] = f"{views // 1000}K"
                             else:
                                 video["views"] = str(views)
                             break
@@ -643,9 +643,9 @@ class GetVideoDetailsTool(BaseTool):
             # Views formatieren
             views = int(stats.get("viewCount", 0))
             if views >= 1000000:
-                views_formatted = f"{views//1000000}M"
+                views_formatted = f"{views // 1000000}M"
             elif views >= 1000:
-                views_formatted = f"{views//1000}K"
+                views_formatted = f"{views // 1000}K"
             else:
                 views_formatted = str(views)
 
