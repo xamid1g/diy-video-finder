@@ -945,7 +945,6 @@ design_task = Task(
     agent=senior_designer_agent,
     expected_output="Vollständiges, professionelles CSS gespeichert in output/styles.css"
 )
-)
 
 # =============================================================================
 # CREW CONFIGURATION
