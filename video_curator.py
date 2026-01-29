@@ -170,13 +170,14 @@ MOCK_VIDEO_DETAILS = {
 # LLM CONFIGURATION
 # =============================================================================
 if not DRY_RUN:
-    print("🤖 Initializing Multi-Agent System (GPT-4o-mini)...")
+    print("🤖 Initializing Multi-Agent System (GPT-4o)...")
 else:
     print("🧪 DRY-RUN MODE - Using mock data, no API calls")
 
-# Using gpt-4o-mini: 150 requests/day limit (vs gpt-4o: 50/day)
+# Using gpt-4o: 50 requests/day, 128K context (vs gpt-4o-mini: 150/day, 8K context)
+# gpt-4o is better for complex reasoning and longer prompts
 gpt4o_llm = LLM(
-    model="openai/gpt-4o-mini",
+    model="openai/gpt-4o",
     api_key=GITHUB_TOKEN,
     base_url=GITHUB_API_BASE,
 )
