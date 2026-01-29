@@ -86,15 +86,27 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")  # OpenAI - 128K tokens
 # Vertex AI configuration (for global endpoint with higher rate limits)
 VERTEXAI_PROJECT = os.getenv("VERTEXAI_PROJECT")  # GCP Project ID for Vertex AI
 VERTEXAI_LOCATION = os.getenv("VERTEXAI_LOCATION", "global")  # Default to global endpoint
-GOOGLE_APPLICATION_CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")  # Path to service account JSON
+# Note: GOOGLE_APPLICATION_CREDENTIALS should be set in environment, automatically picked up by Google Cloud SDK
 DRY_RUN = args.dry_run
 
-if (
-    not GH_MODELS_TOKEN
-    and not OPENAI_API_KEY
-    and not GOOGLE_API_KEY
-    and not (VERTEXAI_PROJECT and GOOGLE_APPLICATION_CREDENTIALS)
-):
+# Validate Vertex AI configuration - both project and credentials must be set together
+if VERTEXAI_PROJECT and not os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
+    raise ValueError(
+        "VERTEXAI_PROJECT is set but GOOGLE_APPLICATION_CREDENTIALS is missing.\n"
+        "For Vertex AI, you must set both:\n"
+        "  - VERTEXAI_PROJECT=your-gcp-project-id\n"
+        "  - GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json"
+    )
+if os.getenv("GOOGLE_APPLICATION_CREDENTIALS") and not VERTEXAI_PROJECT:
+    raise ValueError(
+        "GOOGLE_APPLICATION_CREDENTIALS is set but VERTEXAI_PROJECT is missing.\n"
+        "For Vertex AI, you must set both:\n"
+        "  - VERTEXAI_PROJECT=your-gcp-project-id\n"
+        "  - GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json"
+    )
+
+# Check that at least one LLM provider is configured
+if not GH_MODELS_TOKEN and not OPENAI_API_KEY and not GOOGLE_API_KEY and not VERTEXAI_PROJECT:
     raise ValueError(
         "Set at least one LLM API key in .env:\n"
         "  - GOOGLE_API_KEY (for Gemini API)\n"
@@ -219,9 +231,9 @@ MOCK_VIDEO_DETAILS = {
 # =============================================================================
 # LLM CONFIGURATION
 # =============================================================================
-# Priority: Gemini (1M tokens, free) > OpenAI (128K) > GitHub Models (8K)
+# Priority: Vertex AI (global endpoint) > Gemini API > OpenAI > GitHub Models
 if not DRY_RUN:
-    if VERTEXAI_PROJECT and GOOGLE_APPLICATION_CREDENTIALS:
+    if VERTEXAI_PROJECT and os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
         print(
             f"🤖 Initializing Multi-Agent System (Gemini 2.0 Flash via Vertex AI {VERTEXAI_LOCATION} - 1M+ tokens)..."
         )
@@ -236,9 +248,10 @@ else:
 
 # LLM Configuration with fallback chain
 # Priority: Vertex AI (global endpoint) > Gemini API > OpenAI > GitHub Models
-if VERTEXAI_PROJECT and GOOGLE_APPLICATION_CREDENTIALS:
+if VERTEXAI_PROJECT and os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
     # Vertex AI with global endpoint - prevents rate limit errors by load balancing across regions
-    # Requires: GOOGLE_APPLICATION_CREDENTIALS, VERTEXAI_PROJECT, and optionally VERTEXAI_LOCATION
+    # Requires: GOOGLE_APPLICATION_CREDENTIALS environment variable and VERTEXAI_PROJECT
+    # The GOOGLE_APPLICATION_CREDENTIALS path is automatically picked up by Google Cloud SDK
     gpt4o_llm = LLM(
         model="vertex_ai/gemini-2.0-flash-001",
         vertex_project=VERTEXAI_PROJECT,
