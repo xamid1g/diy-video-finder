@@ -327,28 +327,51 @@ class SaveVideoDataTool(BaseTool):
     - Sorts by rating (best first)"""
     
     def _parse_videos_from_js(self, js_content: str) -> list:
-        """Extract video objects from JavaScript code"""
+        """Extract video objects from JavaScript code or JSON"""
         import re
         import json
         
-        # Find the videos array
-        match = re.search(r'const videos\s*=\s*(\[[\s\S]*?\]);', js_content)
-        if not match:
-            return []
+        content = js_content.strip()
         
-        array_str = match.group(1)
+        # Try 1: Direct JSON array
+        if content.startswith('['):
+            try:
+                return json.loads(content)
+            except:
+                pass
+        
+        # Try 2: JSON with videos key
+        if content.startswith('{'):
+            try:
+                data = json.loads(content)
+                if 'videos' in data:
+                    return data['videos']
+                return [data] if 'youtubeId' in data else []
+            except:
+                pass
+        
+        # Try 3: Find const videos = [...] pattern
+        match = re.search(r'const videos\s*=\s*(\[[\s\S]*?\]);', content)
+        if match:
+            array_str = match.group(1)
+        else:
+            # Try 4: Find any array with video objects
+            match = re.search(r'(\[[\s\S]*?youtubeId[\s\S]*?\])', content)
+            if match:
+                array_str = match.group(1)
+            else:
+                return []
         
         # Convert JS object syntax to JSON-compatible
-        # Handle unquoted keys and single quotes
         json_str = array_str
         
         # Replace single quotes with double quotes
         json_str = re.sub(r"'([^']*)'", r'"\1"', json_str)
         
-        # Add quotes around unquoted keys (but not inside strings)
+        # Add quotes around unquoted keys
         json_str = re.sub(r'(\s*)(\w+)(\s*):', r'\1"\2"\3:', json_str)
         
-        # Fix double-quoted keys that got re-quoted
+        # Fix double-quoted keys
         json_str = re.sub(r'""(\w+)""', r'"\1"', json_str)
         
         try:
@@ -356,10 +379,11 @@ class SaveVideoDataTool(BaseTool):
         except json.JSONDecodeError:
             # Fallback: extract individual video objects via regex
             videos = []
+            # Match objects with youtubeId
             video_pattern = r'\{[^{}]*youtubeId[^{}]*\}'
-            for match in re.finditer(video_pattern, array_str):
+            for m in re.finditer(video_pattern, content):
                 try:
-                    video_str = match.group(0)
+                    video_str = m.group(0)
                     video_str = re.sub(r"'([^']*)'", r'"\1"', video_str)
                     video_str = re.sub(r'(\s*)(\w+)(\s*):', r'\1"\2"\3:', video_str)
                     video_str = re.sub(r'""(\w+)""', r'"\1"', video_str)
@@ -460,7 +484,9 @@ class SaveVideoDataTool(BaseTool):
             new_videos = self._parse_videos_from_js(js_code)
             
             if not new_videos:
-                return "❌ Error: Could not parse any videos from input"
+                # Show first 500 chars of input for debugging
+                preview = js_code[:500].replace('\n', ' ')
+                return f"❌ Error: Could not parse any videos from input. Preview: {preview}..."
             
             # Merge: deduplicate, sort by rating, limit per category
             merged_videos = self._merge_videos(existing_videos, new_videos)
