@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     let currentLang = localStorage.getItem('language') || 'de';
-    
+
     // DOM Elements
     const videoGrid = document.getElementById('video-grid');
     const categorySections = document.getElementById('category-sections');
@@ -68,29 +68,29 @@ document.addEventListener('DOMContentLoaded', () => {
         currentLang = lang;
         localStorage.setItem('language', lang);
         document.documentElement.lang = lang;
-        
+
         // Update UI text
         const text = UI_TEXT[lang];
         siteTitle.textContent = text.siteTitle;
         if (siteSubtitle) siteSubtitle.textContent = text.subtitle;
         searchInput.placeholder = text.searchPlaceholder;
         watchOnYouTube.textContent = text.watchOnYouTube;
-        
+
         // Update filter options
         const allOption = filterSelect.querySelector('option[value="all"]');
         if (allOption) allOption.textContent = text.allCategories;
-        
+
         // Update category options in filter
         filterSelect.querySelectorAll('option').forEach(opt => {
             if (opt.value !== 'all' && CATEGORIES[opt.value]) {
                 opt.textContent = CATEGORIES[opt.value][lang];
             }
         });
-        
+
         // Update active button
         deButton.classList.toggle('active', lang === 'de');
         enButton.classList.toggle('active', lang === 'en');
-        
+
         renderContent();
     }
 
@@ -98,14 +98,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const title = video.title[currentLang] || video.title.de;
         const thumbnailUrl = `https://img.youtube.com/vi/${video.youtubeId}/mqdefault.jpg`;
         const categoryName = CATEGORIES[video.category]?.[currentLang] || video.category;
-        
+
         const card = document.createElement('div');
         card.classList.add('video-card');
         card.setAttribute('tabindex', '0');
         card.setAttribute('role', 'button');
         card.setAttribute('aria-label', `Video: ${title}`);
         card.id = `video-${index}`;
-        
+
         card.innerHTML = `
             <div class="thumbnail">
                 <img src="${thumbnailUrl}" alt="${title}" loading="lazy">
@@ -121,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             </div>
         `;
-        
+
         card.addEventListener('click', () => openModal(video, card));
         card.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === ' ') {
@@ -129,18 +129,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 openModal(video, card);
             }
         });
-        
+
         return card;
     }
 
     function renderContent() {
         const searchTerm = searchInput.value.toLowerCase();
         const filterCategory = filterSelect.value;
-        
+
         // Clear both containers
         videoGrid.innerHTML = '';
         if (categorySections) categorySections.innerHTML = '';
-        
+
         // Filter videos
         const filteredVideos = videos.filter(video => {
             const title = (video.title[currentLang] || video.title.de).toLowerCase();
@@ -149,7 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const matchesCategory = filterCategory === 'all' || video.category === filterCategory;
             return matchesSearch && matchesCategory;
         });
-        
+
         // No results message
         if (filteredVideos.length === 0) {
             if (categorySections) categorySections.style.display = 'none';
@@ -163,12 +163,12 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             return;
         }
-        
+
         // If filtering or searching, show flat grid
         if (filterCategory !== 'all' || searchTerm) {
             if (categorySections) categorySections.style.display = 'none';
             videoGrid.style.display = 'grid';
-            
+
             filteredVideos.forEach((video, index) => {
                 videoGrid.appendChild(createVideoCard(video, index));
             });
@@ -176,7 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Show categorized sections
             if (categorySections) categorySections.style.display = 'block';
             videoGrid.style.display = 'none';
-            
+
             // Group videos by category
             const grouped = {};
             filteredVideos.forEach(video => {
@@ -184,14 +184,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!grouped[cat]) grouped[cat] = [];
                 grouped[cat].push(video);
             });
-            
+
             // Render each category
             Object.entries(grouped).forEach(([category, categoryVideos]) => {
                 const section = document.createElement('div');
                 section.classList.add('category-section');
-                
+
                 const categoryName = CATEGORIES[category]?.[currentLang] || category;
-                
+
                 section.innerHTML = `
                     <div class="category-header">
                         <h2>${categoryName}</h2>
@@ -199,12 +199,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <div class="video-grid category-grid"></div>
                 `;
-                
+
                 const grid = section.querySelector('.category-grid');
                 categoryVideos.forEach((video, index) => {
                     grid.appendChild(createVideoCard(video, `${category}-${index}`));
                 });
-                
+
                 categorySections.appendChild(section);
             });
         }
@@ -214,7 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const title = video.title[currentLang] || video.title.de;
         const desc = video.description[currentLang] || video.description.de;
         const categoryName = CATEGORIES[video.category]?.[currentLang] || video.category;
-        
+
         modalContent.innerHTML = `
             <img src="https://img.youtube.com/vi/${video.youtubeId}/hqdefault.jpg" alt="${title}" class="modal-thumbnail">
             <h2>${title}</h2>
@@ -226,11 +226,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 <span>👁️ ${video.views} ${UI_TEXT[currentLang].views}</span>
             </div>
         `;
-        
+
         watchOnYouTube.href = `https://www.youtube.com/watch?v=${video.youtubeId}`;
         watchOnYouTube.style.display = 'inline-block';
         watchOnYouTube.textContent = UI_TEXT[currentLang].watchOnYouTube;
-        
+
         modal.style.display = 'block';
         modal.setAttribute('aria-hidden', 'false');
         closeButton.focus();
@@ -240,7 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function closeModal() {
         modal.style.display = 'none';
         modal.setAttribute('aria-hidden', 'true');
-        
+
         const triggerId = modal.dataset.triggerElement;
         if (triggerId) {
             const trigger = document.getElementById(triggerId);
@@ -254,11 +254,11 @@ document.addEventListener('DOMContentLoaded', () => {
     searchInput.addEventListener('input', renderContent);
     filterSelect.addEventListener('change', renderContent);
     closeButton.addEventListener('click', closeModal);
-    
+
     window.addEventListener('click', (e) => {
         if (e.target === modal) closeModal();
     });
-    
+
     window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && modal.style.display === 'block') {
             closeModal();
@@ -267,7 +267,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize
     setLanguage(currentLang);
-    
+
     // Set dynamic date
     const lastUpdateEl = document.getElementById('last-update');
     if (lastUpdateEl) {

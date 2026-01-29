@@ -1,4 +1,4 @@
-# DIY Video Finder 
+# DIY Video Finder
 
 > AI-powered Multi-Agent System for curating high-quality YouTube DIY tutorials
 
@@ -15,17 +15,17 @@ A CrewAI-powered pipeline that uses **5 specialized AI agents** to find, verify,
 ##  Architecture
 
 ```
-        
- YouTube          Trockenbaumeister     Content         
- Researcher           (Quality Expert)          Curator         
- (Find Videos)        (DIN 18181/18182)         (Categorize)    
-        
-                                                            
-                           
-                        Senior UI/UX          Frontend        
-                        Designer                  Developer       
-                        (CSS Styles)              (JS Code)       
-                           
+
+ YouTube          Trockenbaumeister     Content
+ Researcher           (Quality Expert)          Curator
+ (Find Videos)        (DIN 18181/18182)         (Categorize)
+
+
+
+                        Senior UI/UX          Frontend
+                        Designer                  Developer
+                        (CSS Styles)              (JS Code)
+
 ```
 
 ##  Quick Start
