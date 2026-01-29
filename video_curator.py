@@ -207,7 +207,7 @@ MOCK_VIDEO_DETAILS = {
 # Priority: Gemini (1M tokens, free) > OpenAI (128K) > GitHub Models (8K)
 if not DRY_RUN:
     if GOOGLE_API_KEY:
-        print("🤖 Initializing Multi-Agent System (Gemini 2.0 Flash - 1M+ tokens)...")
+        print("🤖 Initializing Multi-Agent System (Gemini 2.0 Flash via Vertex AI Global - 1M+ tokens)...")
     elif OPENAI_API_KEY:
         print("🤖 Initializing Multi-Agent System (GPT-4o via OpenAI - 128K tokens)...")
     else:
@@ -217,10 +217,12 @@ else:
 
 # LLM Configuration with fallback chain
 if GOOGLE_API_KEY:
-    # Gemini 2.0 Flash - latest model, 1M+ tokens context, free tier available
+    # Gemini 2.0 Flash via Vertex AI global endpoint - 1M+ tokens context, free tier available
+    # Using global endpoint to prevent rate limit errors on regional endpoints
     gpt4o_llm = LLM(
-        model="gemini/gemini-2.0-flash",
+        model="vertex_ai/gemini-2.0-flash-001",
         api_key=GOOGLE_API_KEY,
+        vertex_location="global",
     )
 elif OPENAI_API_KEY:
     # OpenAI GPT-4o - 128K context
