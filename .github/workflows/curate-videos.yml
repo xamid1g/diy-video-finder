@@ -86,6 +86,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     
     permissions:
+      contents: read
       pages: write
       id-token: write
     
@@ -94,10 +95,17 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     
     steps:
-      - name: 📥 Checkout
+      - name: 📥 Checkout latest
         uses: actions/checkout@v4
         with:
-          ref: main  # Get latest with auto-commit
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      
+      - name: 🔄 Pull latest changes
+        run: |
+          git pull origin main
+          echo "📄 Files in output/:"
+          ls -lah output/
       
       - name: 📦 Setup Pages
         uses: actions/configure-pages@v4
