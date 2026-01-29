@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heimwerker Meister - Trockenbau Tutorials</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1 id="site-title">Heimwerker Meister</h1>
+        <p id="site-subtitle" class="subtitle">Die besten Trockenbau-Tutorials</p>
+        <div class="language-switcher">
+            <button id="de-button" class="lang-btn active">DE</button>
+            <button id="en-button" class="lang-btn">EN</button>
+        </div>
+    </header>
+    <main>
+        <div class="search-filter">
+            <input type="text" id="search-input" placeholder="Videos suchen...">
+            <select id="filter-select">
+                <option value="all">Alle Kategorien</option>
+                <option value="grundlagen">📚 Grundlagen</option>
+                <option value="dachausbau">🏠 Dachausbau</option>
+                <option value="vorwand">🧱 Vorwandinstallation</option>
+                <option value="decke">⬆️ Deckenmontage</option>
+                <option value="reparatur">🔧 Reparatur</option>
+                <option value="werkzeuge">🛠️ Werkzeuge</option>
+                <option value="tueren">🚪 Türen & Öffnungen</option>
+                <option value="spachteln">✨ Spachteln & Finish</option>
+            </select>
+        </div>
+        
+        <!-- Category sections -->
+        <div id="category-sections">
+            <!-- Will be populated by JavaScript -->
+        </div>
+        
+        <!-- All videos grid (when filtering) -->
+        <div class="video-grid" id="video-grid">
+            <!-- Video cards will be inserted here by JavaScript -->
+        </div>
+    </main>
+    <div id="video-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <div id="modal-video-details"></div>
+            <a id="watch-on-youtube" href="#" target="_blank" class="youtube-button">Auf YouTube ansehen</a>
+        </div>
+    </div>
+    <footer>
+        <p id="footer-text">Videos geprüft von unserem Trockenbaumeister-Team | Letzte Aktualisierung: <span id="last-update"></span></p>
+    </footer>
+    <script src="script.js"></script>
+</body>
+</html>

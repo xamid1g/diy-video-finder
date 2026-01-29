@@ -45,8 +45,8 @@ ENV/
 htmlcov/
 *.cover
 
-# Output files
-output/
+# Output files (keep output/ for GitHub Pages deployment)
+# output/ is tracked for Pages, but exclude temp files
 generated/
 *.html
 *.css

@@ -1,0 +1,364 @@
+/* =============================================================================
+   TROCKENBAU TUTORIALS - Professional CSS
+   ============================================================================= */
+
+/* CSS Custom Properties */
+:root {
+    --primary: #1e3a5f;
+    --primary-light: #2d5a87;
+    --primary-dark: #0f2744;
+    --accent: #f59e0b;
+    --accent-hover: #d97706;
+    --background: #f8fafc;
+    --card-bg: #ffffff;
+    --text-primary: #1f2937;
+    --text-secondary: #6b7280;
+    --border: #e5e7eb;
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background-color: var(--background);
+    color: var(--text-primary);
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+/* HEADER */
+header {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+    padding: 2rem 1rem;
+    text-align: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: var(--shadow);
+}
+
+header h1 {
+    color: white;
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+header .subtitle {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 1.1rem;
+}
+
+/* LANGUAGE SWITCHER */
+.language-switcher {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.lang-btn {
+    background: rgba(255, 255, 255, 0.15);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.lang-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.lang-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+}
+
+/* MAIN */
+main {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 1.5rem;
+}
+
+/* SEARCH & FILTER */
+.search-filter {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
+    padding: 1rem;
+    background: var(--card-bg);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+}
+
+.search-filter input,
+.search-filter select {
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+}
+
+.search-filter input { min-width: 280px; }
+.search-filter select { min-width: 200px; cursor: pointer; }
+
+.search-filter input:focus,
+.search-filter select:focus {
+    outline: none;
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 3px rgba(45, 90, 135, 0.1);
+}
+
+/* CATEGORY SECTIONS */
+.category-section { margin-bottom: 2.5rem; }
+
+.category-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--border);
+}
+
+.category-section h2,
+.category-header h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.category-header .count {
+    background: var(--primary-light);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+}
+
+/* VIDEO GRID */
+.video-grid,
+.category-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+}
+
+/* VIDEO CARDS */
+.video-card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.video-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+}
+
+.video-card:focus {
+    outline: 3px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* Thumbnail */
+.thumbnail {
+    position: relative;
+    padding-top: 56.25%;
+    background: #e5e7eb;
+    overflow: hidden;
+}
+
+.thumbnail img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.video-card:hover .thumbnail img {
+    transform: scale(1.05);
+}
+
+/* Play Overlay */
+.play-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60px;
+    height: 60px;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: white;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.video-card:hover .play-overlay { opacity: 1; }
+
+/* Category Badge */
+.category-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: var(--accent);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+/* Video Details */
+.details { padding: 1rem; }
+
+.details .title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.details .channel {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+.details .meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.details .rating { color: var(--accent); }
+
+/* MODAL */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 1000;
+    overflow-y: auto;
+    padding: 2rem;
+}
+
+.modal-content {
+    background: var(--card-bg);
+    max-width: 600px;
+    margin: 2rem auto;
+    border-radius: 16px;
+    padding: 1.5rem;
+    position: relative;
+    animation: modalFadeIn 0.3s ease;
+}
+
+@keyframes modalFadeIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.close-button {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    font-size: 2rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    line-height: 1;
+    transition: color 0.2s ease;
+}
+
+.close-button:hover { color: var(--text-primary); }
+
+.modal-thumbnail {
+    width: 100%;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.modal-content h2 { font-size: 1.25rem; margin-bottom: 0.5rem; }
+.modal-channel, .modal-category { color: var(--text-secondary); margin-bottom: 0.5rem; }
+.modal-meta { display: flex; gap: 1.5rem; margin-top: 1rem; color: var(--text-secondary); }
+
+/* YOUTUBE BUTTON */
+.youtube-button {
+    display: inline-block;
+    background: #ff0000;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    margin-top: 1rem;
+    transition: all 0.2s ease;
+}
+
+.youtube-button:hover {
+    background: #cc0000;
+    transform: translateY(-2px);
+}
+
+/* FOOTER */
+footer {
+    background: var(--primary-dark);
+    color: rgba(255, 255, 255, 0.7);
+    text-align: center;
+    padding: 1.5rem;
+    margin-top: 2rem;
+}
+
+footer p { font-size: 0.9rem; }
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+    header h1 { font-size: 1.75rem; }
+    header .subtitle { font-size: 0.95rem; }
+    .search-filter { flex-direction: column; align-items: stretch; }
+    .search-filter input, .search-filter select { min-width: 100%; }
+    .video-grid, .category-grid { grid-template-columns: 1fr; }
+    .category-header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+    main { padding: 1rem; }
+    .modal { padding: 1rem; }
+}
+
+@media (max-width: 480px) {
+    header { padding: 1.5rem 1rem; }
+    header h1 { font-size: 1.5rem; }
+    .lang-btn { padding: 0.4rem 0.75rem; font-size: 0.85rem; }
+}
+
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
