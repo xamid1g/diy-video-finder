@@ -288,6 +288,10 @@ class SaveStylesTool(BaseTool):
     Returns: Confirmation message."""
     
     def _run(self, css_code: str) -> str:
+        # DRY-RUN: Don't write files
+        if DRY_RUN:
+            return "🧪 DRY-RUN: Would save CSS to output/styles.css (no file written)"
+        
         try:
             output_dir = Path(__file__).parent / "output"
             output_dir.mkdir(exist_ok=True)
@@ -312,6 +316,11 @@ class SaveVideoDataTool(BaseTool):
     Returns: Confirmation message."""
     
     def _run(self, js_code: str) -> str:
+        # DRY-RUN: Don't write files
+        if DRY_RUN:
+            video_count = js_code.count("youtubeId")
+            return f"🧪 DRY-RUN: Would save {video_count} videos to output/script.js (no file written)"
+        
         try:
             output_dir = Path(__file__).parent / "output"
             output_dir.mkdir(exist_ok=True)
