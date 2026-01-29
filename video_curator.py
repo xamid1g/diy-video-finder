@@ -307,19 +307,138 @@ class SaveStylesTool(BaseTool):
             return f"❌ Error saving styles: {str(e)}"
 
 
+# Maximum videos per category
+MAX_VIDEOS_PER_CATEGORY = 5
+
+
 class SaveVideoDataTool(BaseTool):
-    """Save curated video data directly to output/script.js"""
+    """Save curated video data directly to output/script.js with smart merging"""
     
     name: str = "Save Video Data"
     description: str = """Save the video data directly to output/script.js.
     Input: JavaScript code starting with 'const videos = [...]'
-    Returns: Confirmation message."""
+    Returns: Confirmation message.
+    
+    Smart features:
+    - Merges new videos with existing ones (no duplicates)
+    - Keeps max 5 videos per category (subdomain)
+    - Sorts by rating (best first)"""
+    
+    def _parse_videos_from_js(self, js_content: str) -> list:
+        """Extract video objects from JavaScript code"""
+        import re
+        import json
+        
+        # Find the videos array
+        match = re.search(r'const videos\s*=\s*(\[[\s\S]*?\]);', js_content)
+        if not match:
+            return []
+        
+        array_str = match.group(1)
+        
+        # Convert JS object syntax to JSON-compatible
+        # Handle unquoted keys and single quotes
+        json_str = array_str
+        
+        # Replace single quotes with double quotes
+        json_str = re.sub(r"'([^']*)'", r'"\1"', json_str)
+        
+        # Add quotes around unquoted keys (but not inside strings)
+        json_str = re.sub(r'(\s*)(\w+)(\s*):', r'\1"\2"\3:', json_str)
+        
+        # Fix double-quoted keys that got re-quoted
+        json_str = re.sub(r'""(\w+)""', r'"\1"', json_str)
+        
+        try:
+            return json.loads(json_str)
+        except json.JSONDecodeError:
+            # Fallback: extract individual video objects via regex
+            videos = []
+            video_pattern = r'\{[^{}]*youtubeId[^{}]*\}'
+            for match in re.finditer(video_pattern, array_str):
+                try:
+                    video_str = match.group(0)
+                    video_str = re.sub(r"'([^']*)'", r'"\1"', video_str)
+                    video_str = re.sub(r'(\s*)(\w+)(\s*):', r'\1"\2"\3:', video_str)
+                    video_str = re.sub(r'""(\w+)""', r'"\1"', video_str)
+                    video = json.loads(video_str)
+                    videos.append(video)
+                except:
+                    pass
+            return videos
+    
+    def _merge_videos(self, existing: list, new_videos: list) -> list:
+        """Merge videos, remove duplicates, sort by rating, limit per category"""
+        # Build dict by youtubeId to remove duplicates (new videos override existing)
+        video_map = {}
+        
+        # Add existing videos
+        for v in existing:
+            vid = v.get('youtubeId')
+            if vid:
+                video_map[vid] = v
+        
+        # Add/override with new videos
+        for v in new_videos:
+            vid = v.get('youtubeId')
+            if vid:
+                video_map[vid] = v
+        
+        # Group by category
+        by_category = {}
+        for v in video_map.values():
+            cat = v.get('category', 'grundlagen')
+            if cat not in by_category:
+                by_category[cat] = []
+            by_category[cat].append(v)
+        
+        # Sort each category by rating (descending) and limit to MAX_VIDEOS_PER_CATEGORY
+        result = []
+        for cat, videos in by_category.items():
+            # Sort by rating (best first)
+            sorted_videos = sorted(videos, key=lambda x: float(x.get('rating', 0)), reverse=True)
+            # Keep only top N per category
+            top_videos = sorted_videos[:MAX_VIDEOS_PER_CATEGORY]
+            result.extend(top_videos)
+        
+        # Final sort: by rating overall
+        result.sort(key=lambda x: float(x.get('rating', 0)), reverse=True)
+        
+        return result
+    
+    def _videos_to_js(self, videos: list) -> str:
+        """Convert video list back to JavaScript code"""
+        lines = ["const videos = ["]
+        for v in videos:
+            # Build each video object manually to preserve the desired format
+            title = v.get('title', {})
+            desc = v.get('description', {})
+            
+            title_de = title.get('de', '') if isinstance(title, dict) else str(title)
+            title_en = title.get('en', title_de) if isinstance(title, dict) else str(title)
+            desc_de = desc.get('de', '') if isinstance(desc, dict) else str(desc)
+            desc_en = desc.get('en', desc_de) if isinstance(desc, dict) else str(desc)
+            
+            line = '  {title:{de:"%s",en:"%s"},description:{de:"%s",en:"%s"},rating:%.1f,views:"%s",category:"%s",youtubeId:"%s",channel:"%s"},' % (
+                title_de.replace('"', '\\"'),
+                title_en.replace('"', '\\"'),
+                desc_de.replace('"', '\\"'),
+                desc_en.replace('"', '\\"'),
+                float(v.get('rating', 0)),
+                v.get('views', '0'),
+                v.get('category', 'grundlagen'),
+                v.get('youtubeId', ''),
+                v.get('channel', 'Unknown')
+            )
+            lines.append(line)
+        lines.append("];")
+        return "\n".join(lines)
     
     def _run(self, js_code: str) -> str:
         # DRY-RUN: Don't write files
         if DRY_RUN:
             video_count = js_code.count("youtubeId")
-            return f"🧪 DRY-RUN: Would save {video_count} videos to output/script.js (no file written)"
+            return f"🧪 DRY-RUN: Would process {video_count} new videos (no file written)"
         
         try:
             output_dir = Path(__file__).parent / "output"
@@ -327,46 +446,58 @@ class SaveVideoDataTool(BaseTool):
             
             script_path = output_dir / "script.js"
             
-            # Read existing script.js to preserve other code
+            # Read existing script.js
             existing_content = ""
+            existing_videos = []
             if script_path.exists():
                 with open(script_path, 'r', encoding='utf-8') as f:
                     existing_content = f.read()
+                existing_videos = self._parse_videos_from_js(existing_content)
             
-            # Extract just the videos array from input
-            clean_code = js_code.strip()
-            if not clean_code.startswith("const videos"):
-                # Try to find const videos in the input
-                import re
-                match = re.search(r'(const videos\s*=\s*\[[\s\S]*?\];)', clean_code)
-                if match:
-                    clean_code = match.group(1)
-                else:
-                    return "❌ Error: Input must contain 'const videos = [...]'"
+            # Parse new videos from input
+            new_videos = self._parse_videos_from_js(js_code)
             
-            # Replace existing videos array or append
+            if not new_videos:
+                return "❌ Error: Could not parse any videos from input"
+            
+            # Merge: deduplicate, sort by rating, limit per category
+            merged_videos = self._merge_videos(existing_videos, new_videos)
+            
+            # Generate new JS code
+            new_js_code = self._videos_to_js(merged_videos)
+            
+            # Replace videos array in existing content or create new
             if "const videos" in existing_content:
                 import re
-                # Non-greedy match bis zum ersten ];
                 new_content = re.sub(
-                    r'const videos\s*=\s*\[.*?\];',
-                    clean_code,
-                    existing_content,
-                    flags=re.DOTALL
+                    r'const videos\s*=\s*\[[\s\S]*?\];',
+                    new_js_code,
+                    existing_content
                 )
             else:
-                new_content = clean_code + "\n\n" + existing_content
+                new_content = new_js_code + "\n\n" + existing_content
             
             with open(script_path, 'w', encoding='utf-8') as f:
                 f.write(new_content)
             
-            # Count videos
-            video_count = clean_code.count("youtubeId")
+            # Stats
+            new_count = len(new_videos)
+            existing_count = len(existing_videos)
+            merged_count = len(merged_videos)
             
-            return f"✅ Updated output/script.js with {video_count} videos"
+            # Count per category
+            cat_counts = {}
+            for v in merged_videos:
+                cat = v.get('category', 'other')
+                cat_counts[cat] = cat_counts.get(cat, 0) + 1
+            
+            cat_summary = ", ".join(f"{k}:{v}" for k, v in sorted(cat_counts.items()))
+            
+            return f"✅ Merged videos: {existing_count} existing + {new_count} new → {merged_count} total (max {MAX_VIDEOS_PER_CATEGORY}/category)\n📊 Per category: {cat_summary}"
             
         except Exception as e:
-            return f"❌ Error saving: {str(e)}"
+            import traceback
+            return f"❌ Error saving: {str(e)}\n{traceback.format_exc()}"
 
 
 class GetVideoDetailsTool(BaseTool):
