@@ -42,12 +42,14 @@ jobs:
 
       - name: 🎬 Run Video Curation Pipeline
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}
+          GH_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
         run: |
           # Build command with optional flags
-          CMD="uv run --no-project -p 3.11 --with crewai --with crewai-tools --with python-dotenv --with pydantic --with litellm --with google-api-python-client video_curator.py"
+          # Using crewai[google-genai] for Gemini support (priority: Gemini > OpenAI > GitHub Models)
+          CMD="uv run --no-project -p 3.11 --with 'crewai[google-genai]' --with crewai-tools --with python-dotenv --with pydantic --with litellm --with google-api-python-client video_curator.py"
 
           # Add skip-design flag if requested
           if [ "${{ inputs.skip_design }}" = "true" ]; then
