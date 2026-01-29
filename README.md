@@ -34,7 +34,11 @@ A CrewAI-powered pipeline that uses **5 specialized AI agents** to find, verify,
 
 - Python 3.10+
 - [uv](https://github.com/astral-sh/uv) package manager
-- GitHub Token (for GPT-4o-mini via GitHub Models)
+- **LLM API Key** (choose one):
+  - Google Gemini API Key (recommended for simplicity) OR
+  - Vertex AI credentials (recommended for production/high rate limits) OR
+  - OpenAI API Key OR
+  - GitHub Token
 - YouTube Data API v3 Key
 
 ### Setup
@@ -45,9 +49,25 @@ cd diy-video-finder
 cp .env.example .env
 ```
 
-2. Add your API keys to `.env`:
+2. Add your API keys to `.env` (choose one LLM option):
+
+**Option A: Google Gemini API (simplest)**
 ```env
-GITHUB_TOKEN=ghp_your_github_token
+GOOGLE_API_KEY=your_gemini_api_key_here
+YOUTUBE_API_KEY=your_youtube_api_key
+```
+
+**Option B: Vertex AI (recommended for production - uses global endpoint to prevent rate limits)**
+```env
+VERTEXAI_PROJECT=your-gcp-project-id
+VERTEXAI_LOCATION=global
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+YOUTUBE_API_KEY=your_youtube_api_key
+```
+
+**Option C: OpenAI**
+```env
+OPENAI_API_KEY=sk-your_openai_api_key
 YOUTUBE_API_KEY=your_youtube_api_key
 ```
 
@@ -89,15 +109,36 @@ diy-video-finder/
 -  Deckenmontage (Ceiling Installation)
 -  Dachausbau (Attic Conversion)
 -  Reparatur (Repair)
--  Türen & Öffnungen (Doors & Openings)
+-  Tï¿½ren & ï¿½ffnungen (Doors & Openings)
 -  Spachteln & Finish (Taping & Finishing)
 -  Werkzeuge (Tools)
 
 ##  API Keys
 
-### GitHub Token
-Get one at: https://github.com/settings/tokens
-Required scopes: None (public model access)
+### LLM Providers (choose one)
+
+#### Google Gemini API (Recommended for beginners)
+- **Get one at**: https://aistudio.google.com/app/apikey
+- **Pros**: Simple setup, free tier, 1M+ token context
+- **Cons**: Lower rate limits than Vertex AI
+
+#### Vertex AI (Recommended for production)
+- **Setup**:
+  1. Create GCP project at https://console.cloud.google.com/
+  2. Enable Vertex AI API
+  3. Create service account with "Vertex AI User" role
+  4. Download service account JSON key
+- **Pros**: Higher rate limits, global endpoint prevents rate limit errors, enterprise-grade
+- **Cons**: More complex setup, requires GCP account
+- **Note**: Uses `locations/global` endpoint to maximize availability and prevent regional rate limits
+
+#### OpenAI
+- **Get one at**: https://platform.openai.com/api-keys
+- **Note**: GPT-4o has 128K token context (vs 1M+ for Gemini)
+
+#### GitHub Models (Fallback)
+- **Get one at**: https://github.com/settings/tokens
+- **Note**: Limited to 8K token context, only recommended as fallback
 
 ### YouTube Data API v3
 1. Go to https://console.cloud.google.com/apis/credentials
