@@ -25,6 +25,7 @@ logging.basicConfig(level=logging.ERROR)
 
 import os
 import json
+import argparse
 from pathlib import Path
 from datetime import datetime
 from dotenv import load_dotenv
@@ -38,10 +39,58 @@ env_path = Path(__file__).parent / ".env"
 load_dotenv(dotenv_path=env_path, override=True)
 
 # =============================================================================
+# CLI ARGUMENTS
+# =============================================================================
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="DIY Video Finder - Multi-Agent Video Curation System",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python video_curator.py                    # Full pipeline
+  python video_curator.py --dry-run          # Test without API calls
+  python video_curator.py --skip-design      # Skip CSS regeneration
+  python video_curator.py --max-videos 5     # Limit to 5 videos
+        """
+    )
+    parser.add_argument(
+        "--dry-run", "-d",
+        action="store_true",
+        help="Run without API calls (uses mock data for testing)"
+    )
+    parser.add_argument(
+        "--skip-design", "-s",
+        action="store_true",
+        help="Skip the CSS design task (faster iteration)"
+    )
+    parser.add_argument(
+        "--max-videos", "-m",
+        type=int,
+        default=10,
+        help="Maximum number of videos to process (default: 10)"
+    )
+    parser.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="Show detailed agent output"
+    )
+    parser.add_argument(
+        "--queries", "-q",
+        nargs="+",
+        default=["Trockenbau Anleitung", "Rigips Decke", "Trockenbau reparieren"],
+        help="YouTube search queries (default: Trockenbau Anleitung, Rigips Decke, Trockenbau reparieren)"
+    )
+    return parser.parse_args()
+
+# Parse CLI args early (before any API calls)
+args = parse_args()
+
+# =============================================================================
 # CONFIGURATION
 # =============================================================================
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
+DRY_RUN = args.dry_run
 
 if not GITHUB_TOKEN:
     raise ValueError("GITHUB_TOKEN not found in .env")
@@ -99,9 +148,31 @@ CATEGORIES = {
 }
 
 # =============================================================================
+# MOCK DATA FOR DRY-RUN MODE
+# =============================================================================
+MOCK_VIDEOS = [
+    {"id": "mwEnTFm80-M", "title": "Wand einziehen | HORNBACH Meisterschmiede", "channel": "HORNBACH", "views": "1.2M"},
+    {"id": "obvKgvIv_Vg", "title": "Erstellung von Montagedecken - Rigips", "channel": "SAINT-GOBAIN RIGIPS", "views": "890K"},
+    {"id": "uoU_BlY_2Lw", "title": "Erstellung von Türöffnungen - Rigips", "channel": "SAINT-GOBAIN RIGIPS", "views": "650K"},
+    {"id": "i7jZ9suB9y8", "title": "Vorsatzschalen mit Unterkonstruktion", "channel": "SAINT-GOBAIN RIGIPS", "views": "720K"},
+    {"id": "abc123test", "title": "Trockenbau Grundlagen für Anfänger", "channel": "Handwerker Tips", "views": "450K"},
+    {"id": "def456test", "title": "Rigips Decke abhängen Anleitung", "channel": "DIY Academy", "views": "380K"},
+]
+
+MOCK_VIDEO_DETAILS = {
+    "mwEnTFm80-M": {"title": "Wand einziehen | HORNBACH Meisterschmiede", "channel": "HORNBACH", "description": "Professionelle Anleitung zum Errichten einer Trockenbauwand mit Metallständerwerk.", "tags": ["Trockenbau", "Rigips", "Wand", "DIY"], "views": "1.2M", "viewCount": 1200000},
+    "obvKgvIv_Vg": {"title": "Erstellung von Montagedecken - Rigips", "channel": "SAINT-GOBAIN RIGIPS", "description": "Offizielle RIGIPS Anleitung für abgehängte Decken nach DIN 18181.", "tags": ["Decke", "Rigips", "Montage"], "views": "890K", "viewCount": 890000},
+    "uoU_BlY_2Lw": {"title": "Erstellung von Türöffnungen - Rigips", "channel": "SAINT-GOBAIN RIGIPS", "description": "Türzargen und Öffnungen in Trockenbauwänden fachgerecht erstellen.", "tags": ["Tür", "Öffnung", "Trockenbau"], "views": "650K", "viewCount": 650000},
+    "i7jZ9suB9y8": {"title": "Vorsatzschalen mit Unterkonstruktion", "channel": "SAINT-GOBAIN RIGIPS", "description": "Vorsatzschalen zur Wandverkleidung mit CW/UW-Profilen.", "tags": ["Vorsatzschale", "Dämmung", "Wand"], "views": "720K", "viewCount": 720000},
+}
+
+# =============================================================================
 # LLM CONFIGURATION
 # =============================================================================
-print("🤖 Initializing Multi-Agent System (GPT-4o-mini)...")
+if not DRY_RUN:
+    print("🤖 Initializing Multi-Agent System (GPT-4o-mini)...")
+else:
+    print("🧪 DRY-RUN MODE - Using mock data, no API calls")
 
 # Using gpt-4o-mini: 150 requests/day limit (vs gpt-4o: 50/day)
 gpt4o_llm = LLM(
@@ -120,6 +191,10 @@ class YouTubeSearchTool(BaseTool):
     description: str = """Search YouTube for Trockenbau videos. Input: search query. Returns: JSON with top 5 videos."""
     
     def _run(self, query: str) -> str:
+        # DRY-RUN: Return mock data
+        if DRY_RUN:
+            return json.dumps({"videos": MOCK_VIDEOS[:args.max_videos], "mock": True}, ensure_ascii=False)
+        
         if not YOUTUBE_API_KEY:
             return json.dumps({"error": "YOUTUBE_API_KEY not set"})
         
@@ -294,6 +369,14 @@ class GetVideoDetailsTool(BaseTool):
     Returns: Titel, Beschreibung, Kanal, Tags, Views - wichtig für die Qualitätsprüfung."""
     
     def _run(self, video_id: str) -> str:
+        vid_id = video_id.strip()
+        
+        # DRY-RUN: Return mock data
+        if DRY_RUN:
+            if vid_id in MOCK_VIDEO_DETAILS:
+                return json.dumps({"id": vid_id, **MOCK_VIDEO_DETAILS[vid_id], "mock": True}, ensure_ascii=False)
+            return json.dumps({"id": vid_id, "title": f"Mock Video {vid_id}", "channel": "Mock Channel", "description": "Mock description for testing", "tags": ["mock"], "views": "100K", "viewCount": 100000, "mock": True})
+        
         if not YOUTUBE_API_KEY:
             return json.dumps({"error": "YOUTUBE_API_KEY not set"})
         
@@ -593,7 +676,16 @@ crew = Crew(
     agents=[video_research_agent, trockenbaumeister_agent, curator_agent, developer_agent, senior_designer_agent],
     tasks=[research_task, quality_review_task, curation_task, development_task, design_task],
     process=Process.sequential,
-    verbose=True,
+    verbose=args.verbose if 'args' in dir() else True,
+    memory=False
+)
+
+# Crew without design task (for --skip-design)
+crew_no_design = Crew(
+    agents=[video_research_agent, trockenbaumeister_agent, curator_agent, developer_agent],
+    tasks=[research_task, quality_review_task, curation_task, development_task],
+    process=Process.sequential,
+    verbose=args.verbose if 'args' in dir() else True,
     memory=False
 )
 
@@ -604,16 +696,22 @@ def run_video_curation():
     print("🎬 DIY VIDEO FINDER - Multi-Agent Video Curation System")
     print("="*70)
     print(f"📅 Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
-    print(f"🔑 YouTube API: {'✅ Configured' if YOUTUBE_API_KEY else '❌ Missing'}")
-    print(f"🤖 Agents: Research → Trockenbaumeister → Curator → Developer → Designer")
+    print(f"🧪 Mode: {'DRY-RUN (mock data)' if DRY_RUN else 'LIVE (real APIs)'}")
+    print(f"🔑 YouTube API: {'✅ Configured' if YOUTUBE_API_KEY else '⚠️ Missing (OK for dry-run)'}")
+    print(f"📊 Max Videos: {args.max_videos}")
+    print(f"🎨 Design Task: {'⏭️ Skipped' if args.skip_design else '✅ Enabled'}")
+    print(f"🤖 Agents: Research → Trockenbaumeister → Curator → Developer{'' if args.skip_design else ' → Designer'}")
     print("="*70 + "\n")
     
-    if not YOUTUBE_API_KEY:
-        print("❌ ERROR: YOUTUBE_API_KEY not set in .env")
+    if not DRY_RUN and not YOUTUBE_API_KEY:
+        print("❌ ERROR: YOUTUBE_API_KEY not set in .env (use --dry-run to test without API)")
         return None
     
+    # Select crew based on --skip-design flag
+    active_crew = crew_no_design if args.skip_design else crew
+    
     # Run the crew
-    result = crew.kickoff()
+    result = active_crew.kickoff()
     
     print("\n" + "="*70)
     print("✅ VIDEO CURATION COMPLETE")
@@ -636,7 +734,11 @@ if __name__ == "__main__":
         
         if script_path.exists():
             print(f"\n✅ Video data saved to: {script_path}")
-        if styles_path.exists():
+        if styles_path.exists() and not args.skip_design:
             print(f"✅ Styles saved to: {styles_path}")
         
         print("\n🌐 Open output/index.html in browser to view the website!")
+        
+        if DRY_RUN:
+            print("\n⚠️  DRY-RUN completed - no real API calls were made")
+            print("   Run without --dry-run for production use")
