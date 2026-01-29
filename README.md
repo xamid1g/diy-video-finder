@@ -1,120 +1,115 @@
-# DIY Video Finder 🛠️📹
+# DIY Video Finder 
 
-> Multilingual AI-powered DIY video tutorial aggregator using CrewAI multi-agent system
+> AI-powered Multi-Agent System for curating high-quality YouTube DIY tutorials
 
-Find the best rated YouTube tutorials for home improvement projects. Starting with Drywall (Trockenbau) domain, featuring German and English language support.
+A CrewAI-powered pipeline that uses **5 specialized AI agents** to find, verify, categorize, and present the best German/English drywall (Trockenbau) tutorials.
 
-## 🌟 Features
+##  Features
 
-- **Multi-Agent Architecture**: Developer and Reviewer agents collaborate to build quality websites
-- **Multilingual Support**: German (primary) and English with seamless language switching
-- **Smart Video Curation**: Focus on highly-rated tutorials with quality comments
-- **Responsive Design**: Works on mobile, tablet, and desktop
-- **Rating System**: Star ratings and comment quality indicators
-- **DIY Domains**: Starting with Drywall, expandable to plumbing, electrical, painting, etc.
+- **5-Agent Architecture**: Research  Quality Review  Curation  Development  Design
+- **Expert Verification**: Trockenbaumeister agent validates videos against DIN standards
+- **Real YouTube Data**: Fetches actual videos via YouTube Data API v3
+- **Bilingual UI**: German (primary) & English with localStorage persistence
+- **Professional Design**: Modern card-based responsive layout
 
-## 🚀 Quick Start
+##  Architecture
+
+```
+        
+ YouTube          Trockenbaumeister     Content         
+ Researcher           (Quality Expert)          Curator         
+ (Find Videos)        (DIN 18181/18182)         (Categorize)    
+        
+                                                            
+                           
+                        Senior UI/UX          Frontend        
+                        Designer                  Developer       
+                        (CSS Styles)              (JS Code)       
+                           
+```
+
+##  Quick Start
 
 ### Prerequisites
 
-- Python 3.10 or higher
+- Python 3.10+
 - [uv](https://github.com/astral-sh/uv) package manager
+- GitHub Token (for GPT-4o-mini via GitHub Models)
+- YouTube Data API v3 Key
 
-### Installation
+### Setup
 
+1. Clone and create .env file:
 ```bash
-# Install dependencies
-uv sync
-
-# Run the multi-agent website builder
-uv run main.py
+cd diy-video-finder
+cp .env.example .env
 ```
 
-### Using pip (alternative)
+2. Add your API keys to `.env`:
+```env
+GITHUB_TOKEN=ghp_your_github_token
+YOUTUBE_API_KEY=your_youtube_api_key
+```
 
+3. Run the multi-agent pipeline:
 ```bash
-# Install dependencies
-pip install -e .
-
-# Run the application
-python main.py
+uv run --no-project -p 3.11 --with crewai --with crewai-tools --with python-dotenv --with pydantic --with litellm --with google-api-python-client video_curator.py
 ```
 
-## 🏗️ How It Works
+4. Open `output/index.html` in your browser!
 
-The project uses **CrewAI** to orchestrate two AI agents:
-
-1. **Developer Agent** 🧑‍💻
-   - Creates HTML, CSS, and JavaScript code
-   - Implements responsive design and accessibility features
-   - Incorporates bilingual content (German/English)
-
-2. **Reviewer Agent** 🔍
-   - Reviews code quality and security
-   - Checks performance and accessibility (WCAG compliance)
-   - Provides detailed improvement suggestions
-
-### Workflow
-
-```
-Requirements → Developer → Reviewer → Improved Code → Final Website
-```
-
-The agents work sequentially to produce high-quality, production-ready code.
-
-## 📁 Project Structure
+##  Project Structure
 
 ```
 diy-video-finder/
-├── main.py              # Multi-agent orchestration script
-├── pyproject.toml       # Project configuration & dependencies
-├── README.md            # This file
-├── .gitignore           # Git ignore patterns
-└── output/              # Generated website files (created on run)
+ video_curator.py     # Multi-agent pipeline (5 agents, 5 tasks)
+ pyproject.toml       # Dependencies
+ .env                 # API keys (not committed)
+ output/
+    index.html       # Static HTML template
+    script.js        # Generated video data + UI logic
+    styles.css       # Generated/editable CSS
+ README.md
 ```
 
-## 🎯 Current Domain: Drywall (Trockenbau)
+##  The Agents
 
-The initial release focuses on drywall installation and repair tutorials with example videos:
+| Agent | Role | Tools |
+|-------|------|-------|
+| **YouTube Researcher** | Finds top Trockenbau videos | YouTube Search, Load Existing |
+| **Trockenbaumeister** | Verifies technical correctness | Get Video Details |
+| **Content Curator** | Categorizes & creates bilingual content | - |
+| **Frontend Developer** | Generates JavaScript video array | Save Video Data |
+| **Senior UI/UX Designer** | Creates professional CSS | Save Styles |
 
-- German: "Trockenbau wie ein Profi", "Trockenbau Reparatur", etc.
-- English: "How to Install Drywall Like a Pro", "Drywall Repair", etc.
+##  Video Categories
 
-## 🔧 Customization
+-  Grundlagen (Basics)
+-  Vorwandinstallation (Wall Installation)
+-  Deckenmontage (Ceiling Installation)
+-  Dachausbau (Attic Conversion)
+-  Reparatur (Repair)
+-  T�ren & �ffnungen (Doors & Openings)
+-  Spachteln & Finish (Taping & Finishing)
+-  Werkzeuge (Tools)
 
-Edit the `requirements` variable in [main.py](main.py) to:
-- Change design preferences
-- Add new DIY domains
-- Modify color schemes
-- Adjust content requirements
+##  API Keys
 
-## 🌍 Language Support
+### GitHub Token
+Get one at: https://github.com/settings/tokens
+Required scopes: None (public model access)
 
-- **Primary**: German (Deutsch) 🇩🇪
-- **Secondary**: English 🇬🇧
-- Language switcher in header
-- Persistent language preference via localStorage
+### YouTube Data API v3
+1. Go to https://console.cloud.google.com/apis/credentials
+2. Create a new API key
+3. Enable "YouTube Data API v3"
 
-## 📝 License
+##  License
 
-MIT License - see LICENSE file for details
+MIT License
 
-## 🤝 Contributing
+##  Contributing
 
-This is a business project, but contributions are welcome! Please:
 1. Fork the repository
 2. Create a feature branch
 3. Submit a pull request
-
-## 🔮 Future Enhancements
-
-- [ ] YouTube Data API v3 integration for real-time data
-- [ ] More DIY domains (plumbing, electrical, painting)
-- [ ] User authentication and saved videos
-- [ ] Community ratings and comments
-- [ ] Mobile app version
-- [ ] Additional languages (Spanish, French)
-
-## 📧 Contact
-
-For business inquiries or support, contact: your.email@example.com
