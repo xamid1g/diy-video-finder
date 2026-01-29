@@ -78,20 +78,25 @@ args = parse_args()
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
-GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+GH_MODELS_TOKEN = os.getenv("GH_MODELS_TOKEN")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
+# Read OPENAI_API_KEY BEFORE any overwrites
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 DRY_RUN = args.dry_run
 
-if not GITHUB_TOKEN:
-    raise ValueError("GITHUB_TOKEN not found in .env")
+if not GH_MODELS_TOKEN and not OPENAI_API_KEY:
+    raise ValueError("Either OPENAI_API_KEY or GH_MODELS_TOKEN must be set in .env")
 
 if not YOUTUBE_API_KEY:
     print("⚠️  WARNING: YOUTUBE_API_KEY not set - YouTube search will not work!")
     print("   Get one at: https://console.cloud.google.com/apis/credentials")
 
+# GitHub Models fallback config (only used if no OPENAI_API_KEY)
 GITHUB_API_BASE = "https://models.inference.ai.azure.com"
-os.environ["OPENAI_API_KEY"] = GITHUB_TOKEN
-os.environ["OPENAI_API_BASE"] = GITHUB_API_BASE
+if not OPENAI_API_KEY:
+    # Only set these if we need GitHub Models fallback
+    os.environ["OPENAI_API_KEY"] = GH_MODELS_TOKEN
+    os.environ["OPENAI_API_BASE"] = GITHUB_API_BASE
 
 # Video categories for Trockenbau
 CATEGORIES = {
@@ -199,18 +204,20 @@ MOCK_VIDEO_DETAILS = {
 # LLM CONFIGURATION
 # =============================================================================
 if not DRY_RUN:
-    print("🤖 Initializing Multi-Agent System (GPT-4o via OpenAI)...")
+    if OPENAI_API_KEY:
+        print("🤖 Initializing Multi-Agent System (GPT-4o via OpenAI)...")
+    else:
+        print("🤖 Initializing Multi-Agent System (GPT-4o-mini via GitHub Models)...")
 else:
     print("🧪 DRY-RUN MODE - Using mock data, no API calls")
 
-# OpenAI API Key from .env (OPENAI_API_KEY)
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+# LLM Configuration
 if not OPENAI_API_KEY and not DRY_RUN:
     print("⚠️  OPENAI_API_KEY not found, falling back to GitHub Models")
     # Fallback to GitHub Models if no OpenAI key
     gpt4o_llm = LLM(
         model="openai/gpt-4o-mini",
-        api_key=GITHUB_TOKEN,
+        api_key=GH_MODELS_TOKEN,
         base_url=GITHUB_API_BASE,
     )
 else:
