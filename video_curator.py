@@ -170,17 +170,26 @@ MOCK_VIDEO_DETAILS = {
 # LLM CONFIGURATION
 # =============================================================================
 if not DRY_RUN:
-    print("🤖 Initializing Multi-Agent System (GPT-4o)...")
+    print("🤖 Initializing Multi-Agent System (GPT-4o via OpenAI)...")
 else:
     print("🧪 DRY-RUN MODE - Using mock data, no API calls")
 
-# Using gpt-4o: 50 requests/day, 128K context (vs gpt-4o-mini: 150/day, 8K context)
-# gpt-4o is better for complex reasoning and longer prompts
-gpt4o_llm = LLM(
-    model="openai/gpt-4o",
-    api_key=GITHUB_TOKEN,
-    base_url=GITHUB_API_BASE,
-)
+# OpenAI API Key from .env (OPENAI_API_KEY)
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+if not OPENAI_API_KEY and not DRY_RUN:
+    print("⚠️  OPENAI_API_KEY not found, falling back to GitHub Models")
+    # Fallback to GitHub Models if no OpenAI key
+    gpt4o_llm = LLM(
+        model="openai/gpt-4o-mini",
+        api_key=GITHUB_TOKEN,
+        base_url=GITHUB_API_BASE,
+    )
+else:
+    # Use OpenAI directly - 128K context, full intelligence
+    gpt4o_llm = LLM(
+        model="gpt-4o",
+        api_key=OPENAI_API_KEY,
+    )
 
 # =============================================================================
 # YOUTUBE SEARCH TOOL
@@ -700,55 +709,242 @@ senior_designer_agent = Agent(
 # TASK DEFINITIONS
 # =============================================================================
 
-# Task 1: Research NEW videos
+# Task 1: Load existing data and research NEW videos
 research_task = Task(
-    description="""1. Use "Load Existing Videos" to get current video IDs
-2. Search YouTube with "YouTube Video Search" for: "Trockenbau Anleitung", "Rigips montieren"
-3. Return ONLY videos NOT in existing list
-Output: JSON array [{id, title, channel, views}]""",
+    description="""Deine Aufgabe ist es, NEUE hochwertige Trockenbau-Videos auf YouTube zu finden.
+    
+    SCHRITT 1: Existierende Videos laden
+    - Nutze das "Load Existing Videos" Tool ZUERST
+    - Notiere alle existierenden youtubeId Werte - diese MÜSSEN übersprungen werden!
+    - Das Tool gibt dir eine Liste mit IDs und Kategorien zurück
+    
+    SCHRITT 2: Suche nach NEUEN Videos mit dem "YouTube Video Search" Tool
+    Führe mindestens 3 verschiedene Suchanfragen durch:
+       - "Trockenbau Anleitung Profi"
+       - "Rigips Decke montieren Tutorial"
+       - "Trockenbau Wand bauen Schritt für Schritt"
+       - "Gipskarton spachteln Anleitung"
+       - "Dachausbau Trockenbau Dämmung"
+    
+    SCHRITT 3: Ergebnisse filtern
+    - ÜBERSPRINGE jede Video-ID die bereits auf der Website existiert!
+    - Priorisiere Videos von bekannten Kanälen: RIGIPS, HORNBACH, Knauf, OBI, BAUHAUS
+    - Bevorzuge Videos mit hoher Aufrufzahl (>100K)
+    - Nur deutschsprachige Tutorials
+    
+    WICHTIG: Wenn eine Video-ID bereits existiert, füge sie NICHT hinzu!
+    
+    Return: JSON Array mit NUR NEUEN Videos
+    Format: [{"id": "VIDEO_ID", "title": "Titel", "channel": "Kanalname", "views": "500K"}]""",
     agent=video_research_agent,
-    expected_output="JSON array of NEW videos with id, title, channel, views"
+    expected_output="JSON array of NEW videos (not already on website) with id, title, channel, views"
 )
 
-# Task 2: Quality review
+# Task 2: Quality review by Trockenbaumeister
 quality_review_task = Task(
-    description="""Review videos from research. Use "Get Video Details" for 3-5 videos.
-Rate 4-5 stars for: RIGIPS, HORNBACH, Knauf, professional channels.
-Reject: clickbait, unsafe techniques.
-Output: JSON [{videoId, views, rating, approved: true/false}]""",
+    description="""Als erfahrener Trockenbaumeister mit 20+ Jahren Berufserfahrung prüfst du die gefundenen Videos auf fachliche Korrektheit und Qualität.
+
+    VORGEHEN:
+    1. Nutze das "Get Video Details" Tool für JEDES Video aus der Research-Phase
+    2. Prüfe Beschreibung, Tags, Kanalnamen und Views
+    3. Bewerte basierend auf professionellen Standards
+    
+    FACHLICHE PRÜFKRITERIEN (basierend auf DIN 18181, 18182, 4102):
+    
+    1. UNTERKONSTRUKTION:
+       - Werden korrekte Profile verwendet? (CW50/75/100, UW-Profile)
+       - Ist der Achsabstand korrekt? (max. 62,5cm bei einfacher Beplankung, 41,7cm bei Decken)
+       - Werden UA-Profile für Türbereiche erwähnt?
+    
+    2. BEPLANKUNG:
+       - Ist der Schraubenabstand korrekt? (max. 25cm bei Wänden, 17cm bei Decken)
+       - Wird Fugenversatz bei mehrlagiger Beplankung gezeigt? (min. 40cm)
+       - Werden die richtigen Plattentypen erwähnt? (GKB, GKBI, GKF)
+    
+    3. VERTRAUENSWÜRDIGKEIT DER QUELLE:
+       ✅ VERTRAUENSWÜRDIG: 
+          - Hersteller-Kanäle: RIGIPS, Knauf, Fermacell, HORNBACH, OBI, BAUHAUS
+          - Professionelle Handwerker mit Meistertitel
+          - Kanäle mit >100K Abonnenten und professioneller Produktion
+       
+       ⚠️ SKEPTISCH bei:
+          - Clickbait-Titeln ("DIESER TRICK..." / "SO EINFACH...")
+          - Sehr kurzen Videos (<3 Minuten für komplexe Themen)
+          - Kanäle ohne Impressum/professionellen Hintergrund
+          - "Lifehacks" die von Standards abweichen
+    
+    BEWERTUNGSSKALA:
+    - 5.0 Sterne: Professionell, Hersteller-Kanal oder verifizierter Meisterbetrieb, DIN-konform
+    - 4.5 Sterne: Sehr gut, erfahrener Handwerker, fachlich korrekt
+    - 4.0 Sterne: Gut, solide Anleitung für Heimwerker
+    - ABLEHNEN: Unsichere Techniken, falsche Informationen, unprofessionell
+    
+    WICHTIG: 
+    - Übernimm die EXAKTEN Views aus dem "Get Video Details" Tool!
+    - Begründe jede Bewertung kurz
+    
+    Return: JSON Array mit Bewertungen
+    Format: [{"videoId": "ID", "views": "1.2M", "rating": 4.5, "approved": true, "reason": "Offizieller RIGIPS Kanal, DIN-konforme Anleitung"}]""",
     agent=trockenbaumeister_agent,
     context=[research_task],
-    expected_output="JSON array with videoId, views, rating, approved"
+    expected_output="JSON array mit Video-IDs, Views, Bewertungen (4.0-5.0), approved true/false, und Begründungen"
 )
 
-# Task 3: Categorize
+# Task 3: Categorize and curate
 curation_task = Task(
-    description="""For approved videos, create bilingual content.
-Categories: grundlagen, vorwand, decke, dachausbau, reparatur, tueren, spachteln
-Output: JSON [{youtubeId, title:{de,en}, description:{de,en}, category, rating, views, channel}]""",
+    description="""Erstelle professionelle, zweisprachige Inhalte für die GENEHMIGTEN Videos.
+    
+    WICHTIGE REGELN:
+    1. NUR Videos mit "approved": true aus der Qualitätsprüfung verwenden!
+    2. Die youtubeId MUSS exakt aus dem Kontext übernommen werden!
+    3. Die Views MÜSSEN aus der Qualitätsprüfung übernommen werden!
+    
+    KATEGORIEN - Wähle die PASSENDSTE basierend auf dem INHALT des Videos:
+    
+    | Kategorie    | Beschreibung                                           | Typische Inhalte                    |
+    |--------------|--------------------------------------------------------|-------------------------------------|
+    | grundlagen   | Einführung, Materialien, Werkzeuge                     | "Was ist Trockenbau?", Werkzeugkunde|
+    | vorwand      | Vorsatzschalen, Wandverkleidungen, Installationswände  | Wand vor Wand, Rohre verkleiden     |
+    | decke        | Abgehängte Decken, Montagedecken                       | Decke abhängen, Spots einbauen      |
+    | dachausbau   | Dachschrägen, Dachgeschoss-Ausbau                      | Dachausbau, Dämmung Dachschräge     |
+    | reparatur    | Löcher reparieren, Risse ausbessern                    | Loch in Wand, Risse reparieren      |
+    | tueren       | Türzargen, Türöffnungen                                | Tür einbauen, Zarge setzen          |
+    | spachteln    | Fugenspachtel, Q1-Q4 Oberflächen                       | Verspachteln, Finish, Schleifen     |
+    | werkzeuge    | Werkzeugkunde, Maschinenbedienung                      | Akkuschrauber, Schneidwerkzeuge     |
+    
+    ACHTUNG bei der Kategorisierung:
+    - "Dachschräge verkleiden" → dachausbau (NICHT vorwand!)
+    - "Wand einziehen" → vorwand
+    - "Decke abhängen" → decke
+    - "Rigips spachteln" → spachteln
+    
+    FÜR JEDES GENEHMIGTE VIDEO erstelle:
+    {
+        "youtubeId": "EXAKTE_ID_AUS_KONTEXT",  // z.B. "mwEnTFm80-M"
+        "title": {
+            "de": "Deutscher Titel (Original oder übersetzt)",
+            "en": "English Title (translated)"
+        },
+        "description": {
+            "de": "Kurze Beschreibung in 1-2 Sätzen auf Deutsch",
+            "en": "Short description in 1-2 sentences in English"
+        },
+        "channel": "Original Kanalname",
+        "category": "passende_kategorie",
+        "rating": 4.5,  // Aus Qualitätsprüfung übernehmen
+        "views": "1.2M"  // EXAKT aus Qualitätsprüfung übernehmen!
+    }
+    
+    Return: JSON Array mit allen kuratierten Videos""",
     agent=curator_agent,
     context=[research_task, quality_review_task],
-    expected_output="JSON array with youtubeId, title, description, category, rating, views, channel"
+    expected_output="JSON array mit youtubeId, title {de, en}, description {de, en}, channel, category, rating, views"
 )
 
-# Task 4: Save to website
+# Task 4: Generate website code
 development_task = Task(
-    description="""Convert curated videos to JavaScript and save.
-Format: const videos = [{title:{de:"...",en:"..."},description:{de:"...",en:"..."},rating:5.0,views:"1M",category:"vorwand",youtubeId:"VIDEO_ID",channel:"Channel"}];
-Use "Save Video Data" tool to save!""",
+    description="""Konvertiere die kuratierten Videos in JavaScript-Code und speichere sie.
+    
+    WICHTIG: 
+    - Übernimm ALLE Daten exakt aus dem Curation-Kontext!
+    - Die youtubeId darf NIEMALS "N/A" oder leer sein!
+    - Jedes Video MUSS eine echte YouTube-ID haben!
+    
+    EXAKTES FORMAT für jedes Video:
+    {title:{de:"Deutscher Titel",en:"English Title"},description:{de:"Deutsche Beschreibung",en:"English description"},rating:4.5,views:"1M",category:"vorwand",youtubeId:"mwEnTFm80-M",channel:"HORNBACH"}
+    
+    KOMPLETTES OUTPUT-FORMAT:
+    const videos = [
+      {title:{de:"...",en:"..."},description:{de:"...",en:"..."},rating:5.0,views:"1.2M",category:"grundlagen",youtubeId:"abc123",channel:"RIGIPS"},
+      {title:{de:"...",en:"..."},description:{de:"...",en:"..."},rating:4.5,views:"890K",category:"decke",youtubeId:"def456",channel:"HORNBACH"},
+    ];
+    
+    AKTION: Nutze das "Save Video Data" Tool um den Code zu speichern!
+    Das Tool merged automatisch mit existierenden Videos und entfernt Duplikate.
+    
+    VALIDIERUNG vor dem Speichern:
+    ✓ Jedes Video hat eine youtubeId (11 Zeichen, alphanumerisch + Bindestrich/Unterstrich)
+    ✓ Titel und Beschreibung sind in DE und EN vorhanden
+    ✓ Kategorie ist eine der erlaubten (grundlagen, vorwand, decke, etc.)
+    ✓ Rating ist zwischen 4.0 und 5.0
+    ✓ Views ist formatiert (z.B. "1.2M", "500K", "50K")""",
     agent=developer_agent,
     context=[curation_task],
-    expected_output="Videos saved to output/script.js"
+    expected_output="JavaScript const videos = [...] mit echten youtubeIds, gespeichert in output/script.js"
 )
 
-# Task 5: Update CSS styles
+# Task 5: Redesign the website styles
 design_task = Task(
-    description="""Create modern CSS for the drywall tutorial website.
-Include: body, header, .video-grid, .video-card, .modal, responsive @media.
-Colors: --primary: #1e3a5f, --accent: #f59e0b.
-Use "Save Styles" tool to save to output/styles.css.""",
+    description="""Erstelle ein VOLLSTÄNDIGES, modernes CSS für die Trockenbau-Tutorial Website.
+    
+    DESIGN-SYSTEM (CSS Custom Properties):
+    :root {
+        --primary: #1e3a5f;        /* Dunkelblau - Vertrauen, Professionalität */
+        --primary-light: #2d5a87;
+        --accent: #f59e0b;         /* Amber - Handwerk, Energie */
+        --accent-hover: #d97706;
+        --background: #f8fafc;     /* Sehr helles Grau */
+        --card-bg: #ffffff;
+        --text-primary: #1f2937;
+        --text-secondary: #6b7280;
+        --border: #e5e7eb;
+        --shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+        --radius: 12px;
+        --transition: all 0.2s ease;
+    }
+    
+    BENÖTIGTE SELEKTOREN (alle müssen gestylt werden!):
+    
+    LAYOUT:
+    - body: font-family, background, color
+    - header: gradient background (#1e3a5f → #2d5a87), padding, text-align center
+    - main: max-width 1400px, margin auto, padding
+    - footer: background, padding, text-align center
+    
+    HEADER-KOMPONENTEN:
+    - header h1: font-size 2.5rem, color white, margin
+    - header .subtitle: color rgba(255,255,255,0.8), font-size 1.1rem
+    - .language-switcher: position absolute, top right
+    - .lang-btn: padding, border-radius, cursor pointer
+    - .lang-btn.active: background accent color
+    
+    SUCHE & FILTER:
+    - .search-filter: display flex, gap, margin-bottom, flex-wrap
+    - .search-filter input: flex 1, padding 12px, border-radius, border
+    - .search-filter select: padding 12px, border-radius, min-width
+    
+    VIDEO-GRID:
+    - .category-section: margin-bottom 2rem
+    - .category-section h2: font-size 1.5rem, display flex, align-items center, gap
+    - .video-grid: display grid, grid-template-columns repeat(auto-fill, minmax(340px, 1fr)), gap 24px
+    
+    VIDEO-KARTEN:
+    - .video-card: background white, border-radius 12px, overflow hidden, box-shadow, transition, cursor pointer
+    - .video-card:hover: transform translateY(-4px), box-shadow larger
+    - .video-thumbnail: position relative, padding-top 56.25% (16:9 ratio)
+    - .video-thumbnail img: position absolute, top 0, left 0, width 100%, height 100%, object-fit cover
+    - .play-overlay: position absolute, center, background rgba(0,0,0,0.5), border-radius 50%, opacity 0 → 1 on hover
+    - .video-info: padding 16px
+    - .video-info h3: font-size 1rem, line-height 1.4, margin-bottom 8px
+    - .video-meta: display flex, justify-content space-between, font-size 0.85rem, color secondary
+    - .category-badge: background primary-light, color white, padding 4px 8px, border-radius 4px, font-size 0.75rem
+    - .video-rating: display flex, align-items center, gap 4px (★ symbol)
+    
+    MODAL:
+    - .modal: position fixed, inset 0, background rgba(0,0,0,0.8), display flex, align center, justify center, z-index 1000
+    - .modal-content: background white, border-radius 16px, max-width 900px, width 90%, max-height 90vh, overflow auto
+    - .close-button: position absolute, top right, font-size 2rem, cursor pointer, color gray → black hover
+    - .youtube-button: display inline-flex, background #ff0000, color white, padding 12px 24px, border-radius 8px, text-decoration none
+    
+    RESPONSIVE (@media):
+    - max-width 768px: header h1 smaller, grid 1 column, modal full width
+    - max-width 480px: further adjustments for mobile
+    
+    SPEICHERE das komplette CSS mit dem "Save Styles" Tool!""",
     agent=senior_designer_agent,
-    expected_output="CSS saved to output/styles.css"
+    expected_output="Vollständiges, professionelles CSS gespeichert in output/styles.css"
+)
 )
 
 # =============================================================================
