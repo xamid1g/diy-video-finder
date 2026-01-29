@@ -47,22 +47,27 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
         run: |
-          # Build command with optional flags
           # Using crewai[google-genai] for Gemini support (priority: Gemini > OpenAI > GitHub Models)
-          CMD="uv run --no-project -p 3.11 --with 'crewai[google-genai]' --with crewai-tools --with python-dotenv --with pydantic --with litellm --with google-api-python-client video_curator.py"
+          SKIP_FLAG=""
+          MAX_FLAG=""
 
-          # Add skip-design flag if requested
           if [ "${{ inputs.skip_design }}" = "true" ]; then
-            CMD="$CMD --skip-design"
+            SKIP_FLAG="--skip-design"
           fi
 
-          # Add max-videos if specified
           if [ -n "${{ inputs.max_videos }}" ]; then
-            CMD="$CMD --max-videos ${{ inputs.max_videos }}"
+            MAX_FLAG="--max-videos ${{ inputs.max_videos }}"
           fi
 
-          echo "🚀 Running: $CMD"
-          $CMD
+          echo "🚀 Running video curation pipeline..."
+          uv run --no-project -p 3.11 \
+            --with "crewai[google-genai]" \
+            --with crewai-tools \
+            --with python-dotenv \
+            --with pydantic \
+            --with litellm \
+            --with google-api-python-client \
+            video_curator.py $SKIP_FLAG $MAX_FLAG
 
       - name: 📊 Show changes
         run: |
