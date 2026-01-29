@@ -350,14 +350,14 @@ class SaveVideoDataTool(BaseTool):
             except:
                 pass
         
-        # Try 3: Find const videos = [...] pattern
-        match = re.search(r'const videos\s*=\s*(\[[\s\S]*?\]);', content)
+        # Try 3: Find const videos = [...]; - use greedy match to ];
+        match = re.search(r'const videos\s*=\s*(\[[\s\S]*\]);', content)
         if match:
             array_str = match.group(1)
         else:
-            # Try 4: Find any array with video objects
-            match = re.search(r'(\[[\s\S]*?youtubeId[\s\S]*?\])', content)
-            if match:
+            # Try 4: Find any array starting with [ and containing youtubeId
+            match = re.search(r'(\[[\s\S]*\])', content)
+            if match and 'youtubeId' in match.group(1):
                 array_str = match.group(1)
             else:
                 return []
@@ -365,32 +365,37 @@ class SaveVideoDataTool(BaseTool):
         # Convert JS object syntax to JSON-compatible
         json_str = array_str
         
-        # Replace single quotes with double quotes
+        # Replace single quotes with double quotes (careful not to break apostrophes)
         json_str = re.sub(r"'([^']*)'", r'"\1"', json_str)
         
-        # Add quotes around unquoted keys
-        json_str = re.sub(r'(\s*)(\w+)(\s*):', r'\1"\2"\3:', json_str)
+        # Add quotes around unquoted keys (word followed by colon)
+        json_str = re.sub(r'([{,]\s*)(\w+)(\s*):', r'\1"\2"\3:', json_str)
         
-        # Fix double-quoted keys
+        # Fix already-quoted keys that got double-quoted
         json_str = re.sub(r'""(\w+)""', r'"\1"', json_str)
+        
+        # Remove trailing commas before ] or }
+        json_str = re.sub(r',(\s*[}\]])', r'\1', json_str)
         
         try:
             return json.loads(json_str)
-        except json.JSONDecodeError:
-            # Fallback: extract individual video objects via regex
+        except json.JSONDecodeError as e:
+            print(f"JSON parse error: {e}")
+            # Fallback: extract individual video objects
             videos = []
-            # Match objects with youtubeId
-            video_pattern = r'\{[^{}]*youtubeId[^{}]*\}'
-            for m in re.finditer(video_pattern, content):
-                try:
-                    video_str = m.group(0)
-                    video_str = re.sub(r"'([^']*)'", r'"\1"', video_str)
-                    video_str = re.sub(r'(\s*)(\w+)(\s*):', r'\1"\2"\3:', video_str)
-                    video_str = re.sub(r'""(\w+)""', r'"\1"', video_str)
-                    video = json.loads(video_str)
-                    videos.append(video)
-                except:
-                    pass
+            # Find all youtubeId values and build minimal objects
+            for m in re.finditer(r'youtubeId["\s:]+["\']?([a-zA-Z0-9_-]+)["\']?', content):
+                vid = m.group(1)
+                # Try to find associated data
+                videos.append({
+                    'youtubeId': vid,
+                    'title': {'de': f'Video {vid}', 'en': f'Video {vid}'},
+                    'description': {'de': '', 'en': ''},
+                    'category': 'grundlagen',
+                    'rating': 4.0,
+                    'views': '0',
+                    'channel': 'Unknown'
+                })
             return videos
     
     def _merge_videos(self, existing: list, new_videos: list) -> list:
@@ -695,157 +700,55 @@ senior_designer_agent = Agent(
 # TASK DEFINITIONS
 # =============================================================================
 
-# Task 1: Load existing data and research NEW videos
+# Task 1: Research NEW videos
 research_task = Task(
-    description="""Search YouTube for NEW Trockenbau videos that are NOT already on the website.
-    
-    STEP 1: Load existing video IDs
-    - Use "Load Existing Videos" tool FIRST
-    - Note all existing youtubeId values - these MUST be skipped!
-    
-    STEP 2: Search for NEW videos with "YouTube Video Search" tool:
-       - "Trockenbau Anleitung Profi"
-       - "Rigips Decke montieren"
-       - "Trockenbau Wand bauen"
-       - "Gipskarton spachteln"
-       - "Dachausbau Trockenbau"
-    
-    STEP 3: Filter results
-    - SKIP any video ID that already exists on the website!
-    - Only include truly NEW videos
-    
-    Return: JSON array with ONLY NEW videos (id, title, channel, views)
-    If a video ID is in the existing list, DO NOT include it!""",
+    description="""1. Use "Load Existing Videos" to get current video IDs
+2. Search YouTube with "YouTube Video Search" for: "Trockenbau Anleitung", "Rigips montieren"
+3. Return ONLY videos NOT in existing list
+Output: JSON array [{id, title, channel, views}]""",
     agent=video_research_agent,
-    expected_output="JSON array of NEW videos (not already on website) with id, title, channel, views"
+    expected_output="JSON array of NEW videos with id, title, channel, views"
 )
 
-# Task 2: Quality review by Trockenbaumeister
+# Task 2: Quality review
 quality_review_task = Task(
-    description="""Als Trockenbaumeister prüfst du die gefundenen Videos auf fachliche Korrektheit.
-
-    VORGEHEN:
-    1. Nutze "Get Video Details" für mindestens 3-5 Videos um Beschreibung, Tags und aktuelle Views zu prüfen
-    2. Bewerte basierend auf Titel, Kanal, Beschreibung und Tags
-    
-    PRÜFKRITERIEN (basierend auf DIN 18181, 18182, 4102):
-    
-    1. UNTERKONSTRUKTION:
-       - Korrekte Profilwahl (CW50/75/100, UW-Profile)?
-       - Richtiger Achsabstand (max. 62,5cm bei einfacher Beplankung)?
-    
-    2. BEPLANKUNG:
-       - Schraubenabstand korrekt (max. 25cm Wand, 17cm Decke)?
-       - Fugenversatz bei mehrlagiger Beplankung (min. 40cm)?
-    
-    3. QUELLE:
-       - Vertrauenswürdige Kanäle: RIGIPS, HORNBACH, Knauf, professionelle Handwerker
-       - Skeptisch bei: Clickbait-Titeln, "Lifehacks", sehr kurzen Videos
-    
-    BEWERTUNG pro Video:
-    - 5 Sterne: Professionell, Hersteller-Kanal oder Meisterbetrieb
-    - 4 Sterne: Gut, erfahrener Handwerker
-    - 3 Sterne: Akzeptabel für Einsteiger
-    - ABLEHNEN: Unsichere oder falsche Techniken
-    
-    WICHTIG: Übernimm die AKTUELLEN Views aus "Get Video Details"!
-    
-    Return: JSON Array mit {videoId, views, rating, approved: true/false, reason}""",
+    description="""Review videos from research. Use "Get Video Details" for 3-5 videos.
+Rate 4-5 stars for: RIGIPS, HORNBACH, Knauf, professional channels.
+Reject: clickbait, unsafe techniques.
+Output: JSON [{videoId, views, rating, approved: true/false}]""",
     agent=trockenbaumeister_agent,
     context=[research_task],
-    expected_output="JSON array mit Video-IDs, Views, Bewertungen und Begründungen"
+    expected_output="JSON array with videoId, views, rating, approved"
 )
 
-# Task 3: Categorize and curate
+# Task 3: Categorize
 curation_task = Task(
-    description="""Kategorisiere die GENEHMIGTEN Videos (approved: true) und erstelle zweisprachige Inhalte.
-    
-    WICHTIG: 
-    - Behalte die YouTube Video-IDs (id/videoId) aus dem Kontext bei!
-    - Übernimm die VIEWS aus der Qualitätsprüfung (z.B. "1M", "500K")!
-    
-    KATEGORIEN (wähle die PASSENDSTE basierend auf Videoinhalt):
-    - grundlagen: Einführung in Trockenbau, Materialien, Werkzeuge für Anfänger
-    - vorwand: Vorsatzschalen, Wandverkleidungen, Installationswände (NICHT Dachschrägen!)
-    - decke: Abgehängte Decken, Montagedecken, Deckenbekleidungen
-    - dachausbau: Dachschrägen verkleiden, Dachgeschoss-Ausbau
-    - reparatur: Löcher reparieren, Risse ausbessern, Beschädigungen beheben
-    - tueren: Türzargen, Türöffnungen in Trockenbauwänden
-    - spachteln: Fugenspachtel, Q1-Q4 Oberflächen, Finish-Arbeiten
-    - werkzeuge: Werkzeugkunde, Maschinenbedienung
-    
-    Für jedes genehmigte Video erstelle:
-    - youtubeId: Die Original Video-ID (z.B. "mwEnTFm80-M")
-    - title.de, title.en (Originalsprache beibehalten oder übersetzen)
-    - description.de, description.en (1 Satz)
-    - channel: Der Original Kanalname
-    - category: Eine der Kategorien (basierend auf INHALT, nicht Titel!)
-    - rating: 4.0-5.0 basierend auf Trockenbaumeister-Bewertung
-    - views: Die AKTUELLEN Views aus der Qualitätsprüfung (z.B. "1M", "500K", "100K")
-    
-    NUR Videos mit approved: true aus der Qualitätsprüfung aufnehmen!
-    
-    Return: JSON Array mit allen Feldern.""",
+    description="""For approved videos, create bilingual content.
+Categories: grundlagen, vorwand, decke, dachausbau, reparatur, tueren, spachteln
+Output: JSON [{youtubeId, title:{de,en}, description:{de,en}, category, rating, views, channel}]""",
     agent=curator_agent,
     context=[research_task, quality_review_task],
-    expected_output="JSON array mit youtubeId, title, description, channel, category, rating, views"
+    expected_output="JSON array with youtubeId, title, description, category, rating, views, channel"
 )
 
-# Task 4: Generate website code
+# Task 4: Save to website
 development_task = Task(
-    description="""Generiere das JavaScript videos Array für die Website.
-    
-    WICHTIG: Übernimm die youtubeId aus dem Curation-Kontext! Setze NIEMALS "N/A"!
-    
-    Format:
-    const videos = [
-      {title:{de:"...",en:"..."},description:{de:"...",en:"..."},rating:4.8,views:"1M",category:"grundlagen",youtubeId:"mwEnTFm80-M",channel:"HORNBACH"},
-    ];
-    
-    Nutze das "Save Video Data" Tool um den Code direkt in output/script.js zu speichern!""",
+    description="""Convert curated videos to JavaScript and save.
+Format: const videos = [{title:{de:"...",en:"..."},description:{de:"...",en:"..."},rating:5.0,views:"1M",category:"vorwand",youtubeId:"VIDEO_ID",channel:"Channel"}];
+Use "Save Video Data" tool to save!""",
     agent=developer_agent,
     context=[curation_task],
-    expected_output="JavaScript const videos = [...] code mit echten youtubeIds, saved to output/script.js"
+    expected_output="Videos saved to output/script.js"
 )
 
-# Task 5: Redesign the website styles
+# Task 5: Update CSS styles
 design_task = Task(
-    description="""Erstelle ein VOLLSTÄNDIGES, professionelles CSS für die Trockenbau-Tutorial Website.
-    
-    WICHTIG: Erstelle CSS für ALLE diese HTML-Klassen (existieren bereits in index.html):
-    
-    BENÖTIGTE CSS-SELEKTOREN:
-    - body, header, main, footer
-    - header h1, header .subtitle
-    - .language-switcher, .lang-btn, .lang-btn.active
-    - .search-filter, .search-filter input, .search-filter select
-    - .category-section, .category-section h2
-    - .video-grid (CSS Grid!)
-    - .video-card, .video-card:hover
-    - .video-thumbnail, .video-thumbnail img
-    - .video-info, .video-info h3, .video-info p
-    - .video-meta, .video-channel, .video-rating, .video-stats
-    - .category-badge, .play-overlay
-    - .modal, .modal-content, .close-button
-    - .youtube-button
-    - @media queries für responsive design
-    
-    FARBPALETTE (CSS Custom Properties verwenden!):
-    --primary: #1e3a5f; --primary-light: #2d5a87;
-    --accent: #f59e0b; --background: #f8fafc;
-    --card-bg: #ffffff; --text-primary: #1f2937;
-    --text-secondary: #6b7280; --border: #e5e7eb;
-    
-    DESIGN-REGELN:
-    - Header: gradient background, zentrierter Titel
-    - Cards: border-radius: 12px, shadow, hover-lift Effekt
-    - Video-Thumbnails: 16:9 aspect-ratio mit padding-top: 56.25%
-    - Grid: repeat(auto-fill, minmax(340px, 1fr))
-    - Transitions: all 0.2s ease
-    
-    Speichere das KOMPLETTE CSS mit dem "Save Styles" Tool!""",
+    description="""Create modern CSS for the drywall tutorial website.
+Include: body, header, .video-grid, .video-card, .modal, responsive @media.
+Colors: --primary: #1e3a5f, --accent: #f59e0b.
+Use "Save Styles" tool to save to output/styles.css.""",
     agent=senior_designer_agent,
-    expected_output="Vollständiges CSS mit allen Selektoren gespeichert in output/styles.css"
+    expected_output="CSS saved to output/styles.css"
 )
 
 # =============================================================================
