@@ -204,38 +204,37 @@ MOCK_VIDEO_DETAILS = {
 # =============================================================================
 # LLM CONFIGURATION
 # =============================================================================
-# Priority: Gemini (1M tokens, free) > OpenAI (128K) > GitHub Models (8K)
+# Priority: Gemini (1M tokens) > OpenAI (128K) > GitHub Models (8K)
+# With automatic fallback on rate limits
+
+
+def create_llm(provider: str = "auto"):
+    """Create LLM instance with specified provider or auto-detect"""
+    if (provider == "gemini" or (provider == "auto" and GOOGLE_API_KEY)) and GOOGLE_API_KEY:
+        return LLM(model="gemini/gemini-2.0-flash", api_key=GOOGLE_API_KEY), "gemini"
+    if (provider == "openai" or (provider == "auto" and OPENAI_API_KEY)) and OPENAI_API_KEY:
+        return LLM(model="gpt-4o", api_key=OPENAI_API_KEY), "openai"
+    if GH_MODELS_TOKEN:
+        return LLM(model="openai/gpt-4o-mini", api_key=GH_MODELS_TOKEN, base_url=GITHUB_API_BASE), "github"
+    return None, None
+
+
+# Initial LLM setup
+current_provider = "auto"
+gpt4o_llm, current_provider = create_llm("auto")
+
 if not DRY_RUN:
-    if GOOGLE_API_KEY:
-        print("🤖 Initializing Multi-Agent System (Gemini 2.0 Flash - 1M+ tokens)...")
-    elif OPENAI_API_KEY:
-        print("🤖 Initializing Multi-Agent System (GPT-4o via OpenAI - 128K tokens)...")
+    provider_names = {
+        "gemini": "Gemini 2.0 Flash - 1M+ tokens",
+        "openai": "GPT-4o via OpenAI - 128K tokens",
+        "github": "GPT-4o-mini via GitHub Models - 8K tokens",
+    }
+    if current_provider:
+        print(f"🤖 Initializing Multi-Agent System ({provider_names.get(current_provider, current_provider)})...")
     else:
-        print("🤖 Initializing Multi-Agent System (GPT-4o-mini via GitHub Models - 8K tokens)...")
+        print("❌ No LLM provider available!")
 else:
     print("🧪 DRY-RUN MODE - Using mock data, no API calls")
-
-# LLM Configuration with fallback chain
-if GOOGLE_API_KEY:
-    # Gemini 2.0 Flash - latest model, 1M+ tokens context, free tier available
-    gpt4o_llm = LLM(
-        model="gemini/gemini-2.0-flash",
-        api_key=GOOGLE_API_KEY,
-    )
-elif OPENAI_API_KEY:
-    # OpenAI GPT-4o - 128K context
-    gpt4o_llm = LLM(
-        model="gpt-4o",
-        api_key=OPENAI_API_KEY,
-    )
-else:
-    # Fallback to GitHub Models (8K context limit)
-    print("⚠️  Using GitHub Models fallback (limited to 8K tokens)")
-    gpt4o_llm = LLM(
-        model="openai/gpt-4o-mini",
-        api_key=GH_MODELS_TOKEN,
-        base_url=GITHUB_API_BASE,
-    )
 
 
 # =============================================================================
@@ -1061,46 +1060,77 @@ def run_video_curation():
     # Select crew based on --skip-design flag
     active_crew = crew_no_design if args.skip_design else crew
 
-    # Retry configuration for rate limits
-    max_retries = 3
-    base_delay = 30  # Start with 30 seconds
+    # Fallback chain: gemini -> openai -> github
+    fallback_chain = ["gemini", "openai", "github"]
+    current_provider_idx = 0
+
+    # Find current provider in chain
+    global gpt4o_llm, current_provider
+    for i, p in enumerate(fallback_chain):
+        if current_provider == p:
+            current_provider_idx = i
+            break
+
+    # Retry configuration
+    max_retries_per_provider = 2
+    base_delay = 15  # Start with 15 seconds
     result = None
 
-    for attempt in range(max_retries):
-        try:
-            # Run the crew
-            result = active_crew.kickoff()
-            break  # Success - exit retry loop
+    while current_provider_idx < len(fallback_chain):
+        provider = fallback_chain[current_provider_idx]
 
-        except Exception as e:
-            error_str = str(e).lower()
-            # Check for retryable errors: rate limits (429), empty responses, timeouts
-            is_retryable = (
-                "429" in str(e)
-                or "resource_exhausted" in error_str
-                or "rate" in error_str
-                or "none or empty" in error_str
-                or "invalid response" in error_str
-                or "timeout" in error_str
-            )
+        for attempt in range(max_retries_per_provider):
+            try:
+                # Run the crew
+                result = active_crew.kickoff()
+                # Success - exit all loops
+                print("\n" + "=" * 70)
+                print("✅ VIDEO CURATION COMPLETE")
+                print("=" * 70)
+                return result
 
-            if is_retryable:
-                delay = base_delay * (2**attempt)  # Exponential backoff: 30s, 60s, 120s
-                print(f"\n⚠️  Retryable error (attempt {attempt + 1}/{max_retries}): {str(e)[:100]}")
-                print(f"⏳ Waiting {delay} seconds before retry...")
-                time.sleep(delay)
-                if attempt == max_retries - 1:
-                    print("❌ Max retries reached. Please wait a few minutes and try again.")
+            except Exception as e:
+                error_str = str(e).lower()
+                # Check for rate limit errors (429)
+                is_rate_limit = (
+                    "429" in str(e) or "resource_exhausted" in error_str or "rate" in error_str or "quota" in error_str
+                )
+                is_retryable = is_rate_limit or "none or empty" in error_str or "invalid response" in error_str
+
+                if is_rate_limit and attempt == max_retries_per_provider - 1:
+                    # Rate limit persists - try fallback provider
+                    current_provider_idx += 1
+                    if current_provider_idx < len(fallback_chain):
+                        next_provider = fallback_chain[current_provider_idx]
+                        new_llm, new_provider = create_llm(next_provider)
+                        if new_llm:
+                            print(f"\n🔄 Switching from {provider} to {new_provider} due to rate limits...")
+                            gpt4o_llm = new_llm
+                            current_provider = new_provider
+                            # Update all agents with new LLM
+                            for agent in active_crew.agents:
+                                agent.llm = gpt4o_llm
+                            break  # Exit retry loop, continue with new provider
+                        else:
+                            print(f"\n⚠️  {next_provider} not available, trying next...")
+                            continue
+                    else:
+                        print("❌ All providers exhausted. Please try again later.")
+                        raise
+
+                elif is_retryable:
+                    delay = base_delay * (2**attempt)
+                    print(f"\n⚠️  Error (attempt {attempt + 1}/{max_retries_per_provider}): {str(e)[:80]}")
+                    print(f"⏳ Waiting {delay} seconds before retry...")
+                    time.sleep(delay)
+                else:
+                    # Non-retryable error
                     raise
-            else:
-                # Non-retryable error - don't retry
-                raise
 
     print("\n" + "=" * 70)
-    print("✅ VIDEO CURATION COMPLETE")
+    print("❌ VIDEO CURATION FAILED - All providers exhausted")
     print("=" * 70)
-
-    return result
+    return None
 
 
 if __name__ == "__main__":
