@@ -204,16 +204,19 @@ MOCK_VIDEO_DETAILS = {
 # =============================================================================
 # LLM CONFIGURATION
 # =============================================================================
-# Priority: Gemini (1M tokens) > OpenAI (128K) > GitHub Models (8K)
-# With automatic fallback on rate limits
+# Priority: OpenAI (128K, reliable) > Gemini (1M tokens, rate limited) > GitHub Models (8K)
+# Changed from Gemini-first due to persistent 429 rate limit issues
 
 
 def create_llm(provider: str = "auto"):
     """Create LLM instance with specified provider or auto-detect"""
-    if (provider == "gemini" or (provider == "auto" and GOOGLE_API_KEY)) and GOOGLE_API_KEY:
-        return LLM(model="gemini/gemini-2.0-flash", api_key=GOOGLE_API_KEY), "gemini"
+    # OpenAI first - more reliable, no rate limit issues
     if (provider == "openai" or (provider == "auto" and OPENAI_API_KEY)) and OPENAI_API_KEY:
         return LLM(model="gpt-4o", api_key=OPENAI_API_KEY), "openai"
+    # Gemini as fallback
+    if (provider == "gemini" or (provider == "auto" and GOOGLE_API_KEY)) and GOOGLE_API_KEY:
+        return LLM(model="gemini/gemini-2.0-flash", api_key=GOOGLE_API_KEY), "gemini"
+    # GitHub Models as last resort
     if GH_MODELS_TOKEN:
         return LLM(model="openai/gpt-4o-mini", api_key=GH_MODELS_TOKEN, base_url=GITHUB_API_BASE), "github"
     return None, None
