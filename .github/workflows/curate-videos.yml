@@ -1,7 +1,7 @@
 # DIY Video Finder - Automated Video Curation Workflow
-# Runs the multi-agent pipeline to find and curate new Trockenbau videos
+# Runs the lean v2 pipeline to find and curate new Trockenbau videos
 
-name: 🎬 Video Curation
+name: 🎬 Video Curation v2
 
 on:
   # Scheduled: Every Monday at 6:00 UTC (7:00 CET / 8:00 CEST)
@@ -11,16 +11,21 @@ on:
   # Manual trigger with options
   workflow_dispatch:
     inputs:
-      skip_design:
-        description: 'Skip CSS design task (faster)'
-        required: false
-        default: false
-        type: boolean
       max_videos:
-        description: 'Maximum videos to process'
+        description: 'Maximum videos to add'
         required: false
         default: '10'
         type: string
+      skip_llm:
+        description: 'Skip LLM descriptions (use YouTube only)'
+        required: false
+        default: false
+        type: boolean
+      dry_run:
+        description: 'Dry run (no changes saved)'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   curate:
@@ -40,48 +45,47 @@ jobs:
       - name: 📦 Install uv
         uses: astral-sh/setup-uv@v4
 
-      - name: 🎬 Run Video Curation Pipeline
+      - name: 🎬 Run Video Curation v2
         env:
-          GH_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          # Using crewai[google-genai] for Gemini support (priority: Gemini > OpenAI > GitHub Models)
-          SKIP_FLAG=""
-          MAX_FLAG=""
-
-          if [ "${{ inputs.skip_design }}" = "true" ]; then
-            SKIP_FLAG="--skip-design"
-          fi
+          # v2: Lean pipeline with Trust-Score system (1 optional LLM call)
+          FLAGS=""
 
           if [ -n "${{ inputs.max_videos }}" ]; then
-            MAX_FLAG="--max-videos ${{ inputs.max_videos }}"
+            FLAGS="$FLAGS --max-videos ${{ inputs.max_videos }}"
           fi
 
-          echo "🚀 Running video curation pipeline..."
+          if [ "${{ inputs.skip_llm }}" = "true" ]; then
+            FLAGS="$FLAGS --skip-llm"
+          fi
+
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            FLAGS="$FLAGS --dry-run"
+          fi
+
+          echo "🚀 Running video curation v2..."
           uv run --no-project -p 3.11 \
-            --with "crewai[google-genai]" \
-            --with crewai-tools \
-            --with python-dotenv \
-            --with pydantic \
-            --with litellm \
             --with google-api-python-client \
-            video_curator.py $SKIP_FLAG $MAX_FLAG
+            --with python-dotenv \
+            --with google-genai \
+            --with openai \
+            video_curator_v2.py $FLAGS
 
       - name: 📊 Show changes
         run: |
           echo "📄 Changes in output/script.js:"
           git diff --stat output/script.js || echo "No changes"
           echo ""
-          echo "🎨 Changes in output/styles.css:"
-          git diff --stat output/styles.css || echo "No changes"
+          git diff output/script.js | head -50 || true
 
       - name: 💾 Commit and push changes
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "🤖 Auto-curated videos [skip ci]"
-          file_pattern: "output/*.js output/*.css"
+          file_pattern: "output/script.js"
           commit_user_name: "GitHub Actions Bot"
           commit_user_email: "actions@github.com"
           commit_author: "GitHub Actions <actions@github.com>"

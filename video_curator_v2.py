@@ -319,10 +319,9 @@ def generate_descriptions_batch(videos: list) -> list:
 def _generate_with_gemini(videos: list) -> list:
     """Use Gemini for batch description generation"""
     try:
-        import google.generativeai as genai
+        from google import genai
 
-        genai.configure(api_key=GOOGLE_API_KEY)
-        model = genai.GenerativeModel("gemini-2.0-flash")
+        client = genai.Client(api_key=GOOGLE_API_KEY)
 
         # Build batch prompt
         video_list = "\n".join(
@@ -345,7 +344,10 @@ Beispiel:
 
 JSON Array (exakt {len(videos)} Einträge):"""
 
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+        )
         text = response.text.strip()
 
         # Extract JSON from response
