@@ -1,23 +1,41 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // KURATIERTE Videos vom DIY Video Finder (02. November 2026)
+    // KURATIERTE Videos vom DIY Video Finder (09. November 2026)
     // Geprüft durch: YouTube Researcher → Trockenbaumeister → Content Curator → Frontend Developer
     const videos = [
-  {title:{de:"Erstellung/Aufbau von Holzständerwänden, Rigidur Gipsfaserplatten - Rigips Verarbeitung Trockenbau",en:"Erstellung/Aufbau von Holzständerwänden, Rigidur Gipsfaserplatten - Rigips Verarbeitung Trockenbau"},description:{de:"In diesem Video zeigen wir Ihnen die Grundlagen für die Erstellung von Holzständerwänden mit Rigidur Gipsfaserplatten von Rigips, eine perfekte Altern",en:"In diesem Video zeigen wir Ihnen die Grundlagen für die Erstellung von Holzständerwänden mit Rigidur Gipsfaserplatten von Rigips, eine perfekte Altern"},rating:5.0,views:"929K",category:"grundlagen",youtubeId:"kyfTjpbcr_g",channel:"SAINT-GOBAIN RIGIPS GmbH"},
-  {title:{de:"Verarbeitung freitragender Decken F 30 - Rigips Verarbeitung Trockenbau",en:"Verarbeitung freitragender Decken F 30 - Rigips Verarbeitung Trockenbau"},description:{de:"ACHTUNG: 
-Bei Min. 1:27 hat sich ein Fehler eingeschlichen, die dort angegebenen Maße sind falsch, richtig ist:
-625 mm + 2.000 mm (Standardmaß) oder
-6",en:"ACHTUNG: 
-Bei Min. 1:27 hat sich ein Fehler eingeschlichen, die dort angegebenen Maße sind falsch, richtig ist:
-625 mm + 2.000 mm (Standardmaß) oder
-6"},rating:5.0,views:"627K",category:"grundlagen",youtubeId:"AHTM1fYmvB4",channel:"SAINT-GOBAIN RIGIPS GmbH"},
-  {title:{de:"Unterkonstruktion einer Ständerwand errichten | Trockenbauwand bauen - Teil 2",en:"Unterkonstruktion einer Ständerwand errichten | Trockenbauwand bauen - Teil 2"},description:{de:"In dieser Episode von "So geht Trockenbau" Serie lernst du, wie du für deine selbstgebaute Trockenbauwand das Ständerwerk mit Tür aufstellst. Die Unte",en:"In dieser Episode von "So geht Trockenbau" Serie lernst du, wie du für deine selbstgebaute Trockenbauwand das Ständerwerk mit Tür aufstellst. Die Unte"},rating:5.0,views:"598K",category:"waende",youtubeId:"ihp8HXwQDl8",channel:"Knauf GmbH Österreich"},
-  {title:{de:"Perfekt Verspachteln: So machst du keine Fehler - So geht Trockenbau",en:"Perfekt Verspachteln: So machst du keine Fehler - So geht Trockenbau"},description:{de:"Willst du spachteln wie ein echter Meisterspachtler? Unser Vorfürmeister Adi ist unser Mann wenns ums Verspachteln von Trockenbauwänden geht. In diese",en:"Willst du spachteln wie ein echter Meisterspachtler? Unser Vorfürmeister Adi ist unser Mann wenns ums Verspachteln von Trockenbauwänden geht. In diese"},rating:5.0,views:"506K",category:"spachteln",youtubeId:"ZrHqNdZzCw0",channel:"Knauf GmbH Österreich"},
-  {title:{de:"Gipskarton spachteln und schleifen | OBI",en:"Gipskarton spachteln und schleifen | OBI"},description:{de:"Eine Trockenbauwand zu verspachteln und abzuschleifen ist unabdingbar, um weitere Schritte wie das Tapezieren oder Streichen anzugehen. Das kannst du ",en:"Eine Trockenbauwand zu verspachteln und abzuschleifen ist unabdingbar, um weitere Schritte wie das Tapezieren oder Streichen anzugehen. Das kannst du "},rating:5.0,views:"391K",category:"spachteln",youtubeId:"tMMnkflnZWY",channel:"OBI HowTo"},
-  {title:{de:"Doppelbeplankte Trockenbauwand mit Tür bauen und dämmen | OBI",en:"Doppelbeplankte Trockenbauwand mit Tür bauen und dämmen | OBI"},description:{de:"Mit Gipskartonplatten kannst du ohne großen Arbeitsaufwand oder Vorkenntnisse flexibel Räume aufteilen, um so den Grundriss deines Zuhauses zu verände",en:"Mit Gipskartonplatten kannst du ohne großen Arbeitsaufwand oder Vorkenntnisse flexibel Räume aufteilen, um so den Grundriss deines Zuhauses zu verände"},rating:5.0,views:"337K",category:"werkzeuge",youtubeId:"NlOS-hPiubc",channel:"OBI HowTo"},
-  {title:{de:"Metallprofile & Schrauben für den Trockenbau | Trockenbau Wissen",en:"Metallprofile & Schrauben für den Trockenbau | Trockenbau Wissen"},description:{de:"Für die Konstruktion von Trockenbauwänden kommen unterschiedliche Profile und Schrauben zum Einsatz. In diesem Video erfährst du, was der Unterschied ",en:"Für die Konstruktion von Trockenbauwänden kommen unterschiedliche Profile und Schrauben zum Einsatz. In diesem Video erfährst du, was der Unterschied "},rating:5.0,views:"162K",category:"werkzeuge",youtubeId:"e9ghcbP200g",channel:"Knauf GmbH Österreich"},
-  {title:{de:"Decke richtig mit Gipskarton abhängen | toom Werkstatt",en:"Decke richtig mit Gipskarton abhängen | toom Werkstatt"},description:{de:"Heimwerkarbeiten über Kopf sind immer eine besondere Herausforderung. Deshalb ist es wichtig sich gut vorzubereiten und die wichtigsten Tricks zu kenn",en:"Heimwerkarbeiten über Kopf sind immer eine besondere Herausforderung. Deshalb ist es wichtig sich gut vorzubereiten und die wichtigsten Tricks zu kenn"},rating:5.0,views:"121K",category:"decken",youtubeId:"Imv2RVELSKM",channel:"toom Baumarkt"},
-  {title:{de:"Decke abhängen mit Schnellabhängern - Teil 1 | OBI",en:"Decke abhängen mit Schnellabhängern - Teil 1 | OBI"},description:{de:"Möchtest du eine Decke abhängen, um Leitungen zu verstecken, die Raumakustik zu verbessern oder weil die Decke nicht gerade ist, benötigst du als Erst",en:"Möchtest du eine Decke abhängen, um Leitungen zu verstecken, die Raumakustik zu verbessern oder weil die Decke nicht gerade ist, benötigst du als Erst"},rating:5.0,views:"89K",category:"decken",youtubeId:"AtvZldyJ6m4",channel:"OBI HowTo"},
-  {title:{de:"Decke abhängen: Spachteln - Teil 2 | OBI",en:"Decke abhängen: Spachteln - Teil 2 | OBI"},description:{de:"Hast du bereits eine Unterkonstruktion gebaut, um deine Decke abzuhängen, geht es nun ans Anbringen von Rigipsplatten. Diese verschraubst du mit der U",en:"Hast du bereits eine Unterkonstruktion gebaut, um deine Decke abzuhängen, geht es nun ans Anbringen von Rigipsplatten. Diese verschraubst du mit der U"},rating:4.8,views:"34K",category:"spachteln",youtubeId:"MbkNHkXhZlY",channel:"OBI HowTo"}
+  {title:{de:"TROCKENBAU DECKE SPACHTELN Q1-Q4 mit Knauf Uniflott (So gehts richtig) ✅ Anleitung vom Profi 👷🏼‍♂️",en:"TROCKENBAU DECKE SPACHTELN Q1-Q4 mit Knauf Uniflott (So gehts richtig) ✅ Anleitung vom Profi 👷🏼‍♂️"},description:{de:"In dieser Zwischenfolge vom Wohnungsprojekt zeige ich euch wie man Trockenbau Decke richtig glatt spachtelt von Q1-Q4. 
+
+Knauf LED Profil: https://tin",en:"In dieser Zwischenfolge vom Wohnungsprojekt zeige ich euch wie man Trockenbau Decke richtig glatt spachtelt von Q1-Q4. 
+
+Knauf LED Profil: https://tin"},rating:5.0,views:"148K",category:"spachteln",youtubeId:"3TPXAaTwtjQ",channel:"KREATIVTOBI"},
+  {title:{de:"🟡 Trockenbau: Decke einfach selbst abhängen mit Knauf Diamant Gipsplatten",en:"🟡 Trockenbau: Decke einfach selbst abhängen mit Knauf Diamant Gipsplatten"},description:{de:"Gezeigten Baumaterialien und Werkzeuge mit Affiliate Links (Beim Kauf über diese Links verdiene ich eine kleine Provision und ihr unterstützt somit me",en:"Gezeigten Baumaterialien und Werkzeuge mit Affiliate Links (Beim Kauf über diese Links verdiene ich eine kleine Provision und ihr unterstützt somit me"},rating:5.0,views:"135K",category:"werkzeuge",youtubeId:"Urt4LSfjQmg",channel:"Probier's - Bau"},
+  {title:{de:"Trockenbauwand mit Fenster bauen - Knauf EasyWin Plus",en:"Trockenbauwand mit Fenster bauen - Knauf EasyWin Plus"},description:{de:"In dieser Folge erfährst du, wie du eine Trockenbauwand mit Fenster aufbaust. Das Fertigfenster EasyWin Plus von Knauf erhältst du in vielen unterschi",en:"In dieser Folge erfährst du, wie du eine Trockenbauwand mit Fenster aufbaust. Das Fertigfenster EasyWin Plus von Knauf erhältst du in vielen unterschi"},rating:4.8,views:"43K",category:"werkzeuge",youtubeId:"tShnc2JlDzE",channel:"Knauf GmbH Österreich"},
+  {title:{de:"Trockenbauwand mit Nische richtig bauen | toom Werkstatt",en:"Trockenbauwand mit Nische richtig bauen | toom Werkstatt"},description:{de:"Nischen in einer Trockenbauwand sind tolle Gestaltungselemente um z.B. den Fernseher oder Dekolampen in die Wand zu integrieren. Was du als Selbermach",en:"Nischen in einer Trockenbauwand sind tolle Gestaltungselemente um z.B. den Fernseher oder Dekolampen in die Wand zu integrieren. Was du als Selbermach"},rating:4.8,views:"13K",category:"waende",youtubeId:"gnjLVlfSirs",channel:"toom Baumarkt"},
+  {title:{de:"Abgehängte Decke...so geht das.",en:"Abgehängte Decke...so geht das."},description:{de:"In dieser Anleitung zeigen wir Ihnen wie Sie eine hohe Decke mithilfe von Deckenkonstruktion und Gipskartonplatten abhängen. Zum einem kann es Räume g",en:"In dieser Anleitung zeigen wir Ihnen wie Sie eine hohe Decke mithilfe von Deckenkonstruktion und Gipskartonplatten abhängen. Zum einem kann es Räume g"},rating:4.1,views:"1.2M",category:"decken",youtubeId:"Qy0y81hIKN0",channel:"bauXpertTV"},
+  {title:{de:"Drei schlimme FEHLER beim Trockenbau - und wie man sie vermeiden kann",en:"Drei schlimme FEHLER beim Trockenbau - und wie man sie vermeiden kann"},description:{de:"Leider schon häufig gesehen. Es gibt drei große Fehler, die man beim Trockenbau machen kann und welche schlimme Folgen mit sich bringen, die sich erst",en:"Leider schon häufig gesehen. Es gibt drei große Fehler, die man beim Trockenbau machen kann und welche schlimme Folgen mit sich bringen, die sich erst"},rating:4.0,views:"866K",category:"waende",youtubeId:"ILUF74CsSf8",channel:"Der Wandprofi - Andreas Neufeld"},
+  {title:{de:"So spachtelst du Gipskarton richtig "Q1- Q4"",en:"So spachtelst du Gipskarton richtig "Q1- Q4""},description:{de:"https://malermeisterandy-shop.de/
+
+✨ In diesem Video zeige ich dir Schritt für Schritt, wie du Gipskartonplatten richtig spachtelst – für ein Ergebnis",en:"https://malermeisterandy-shop.de/
+
+✨ In diesem Video zeige ich dir Schritt für Schritt, wie du Gipskartonplatten richtig spachtelst – für ein Ergebnis"},rating:4.0,views:"427K",category:"grundlagen",youtubeId:"M7sOPBVXIFI",channel:"Malermeister Andy"},
+  {title:{de:"Alles rund um den Hohlraumdübel: Montage & Funktion",en:"Alles rund um den Hohlraumdübel: Montage & Funktion"},description:{de:"Welcher Dübel für Rigipswände? In unserem neuen Video stellen wir fünf verschiedene Dübel vor und demonstrieren, was sie wirklich draufhaben!
+
+Immer w",en:"Welcher Dübel für Rigipswände? In unserem neuen Video stellen wir fünf verschiedene Dübel vor und demonstrieren, was sie wirklich draufhaben!
+
+Immer w"},rating:4.0,views:"398K",category:"waende",youtubeId:"1ofu_1cv0eA",channel:"diybook"},
+  {title:{de:"Rigips spachteln im Trockenbau",en:"Rigips spachteln im Trockenbau"},description:{de:"✅ Kostenloses Muster sichern (DE/AT/CH) - Bitte hier die Beschreibung aufklappen ▼ Den Trockenbau selber zu machen ist garkein Problem wennihr euch an",en:"✅ Kostenloses Muster sichern (DE/AT/CH) - Bitte hier die Beschreibung aufklappen ▼ Den Trockenbau selber zu machen ist garkein Problem wennihr euch an"},rating:4.0,views:"383K",category:"waende",youtubeId:"AGCExIs8t8c",channel:"planeo"},
+  {title:{de:"Holzständeraufbau selber bauen: Und mit Rigips verkleiden // MrHandwerk",en:"Holzständeraufbau selber bauen: Und mit Rigips verkleiden // MrHandwerk"},description:{de:"Die Videobeschreibung findest Du hier:
+
+WOLFCARFT PRODUKTE:
+3D Gehrungswinkel:
+https://amzn.to/3IxlE9r
+Einhandzwinge 40-110mm:
+https://amzn.to/3DGNJr5",en:"Die Videobeschreibung findest Du hier:
+
+WOLFCARFT PRODUKTE:
+3D Gehrungswinkel:
+https://amzn.to/3IxlE9r
+Einhandzwinge 40-110mm:
+https://amzn.to/3DGNJr5"},rating:4.0,views:"239K",category:"grundlagen",youtubeId:"bSQeLjo8CRM",channel:"MrHandwerk"}
 ];
 
     // Kategorien mit deutschen und englischen Namen
